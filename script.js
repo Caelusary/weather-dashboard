@@ -540,13 +540,38 @@ function renderWeatherEffects(themeKey) {
       drop.style.animationDelay = `${Math.random() * 2}s`;
       weatherEffects.appendChild(drop);
     }
-  } else if (themeKey === 'clear' || themeKey === 'hot') {
+  } else if (themeKey === 'clear') {
     for (let i = 0; i < 8; i++) {
       const ray = document.createElement('span');
       ray.className = 'sun-ray';
       ray.style.transform = `rotate(${i * (360 / 8)}deg)`;
       ray.style.animationDelay = `${i * 0.2}s`;
       weatherEffects.appendChild(ray);
+    }
+  } else if (themeKey === 'hot') {
+    for (let i = 0; i < 16; i++) {
+      const ember = document.createElement('span');
+      ember.className = 'ember';
+      const size = 3 + Math.random() * 4;
+      ember.style.left = `${Math.random() * 100}%`;
+      ember.style.width = `${size}px`;
+      ember.style.height = `${size}px`;
+      ember.style.setProperty('--drift', `${(Math.random() * 40 - 20).toFixed(0)}px`);
+      ember.style.animationDuration = `${5 + Math.random() * 4}s`;
+      ember.style.animationDelay = `${Math.random() * 6}s`;
+      weatherEffects.appendChild(ember);
+    }
+  } else if (themeKey === 'clouds') {
+    for (let i = 0; i < 5; i++) {
+      const cloud = document.createElement('span');
+      cloud.className = 'drift-cloud';
+      const scale = 0.6 + Math.random() * 0.7;
+      cloud.style.top = `${5 + Math.random() * 40}%`;
+      cloud.style.setProperty('--cloud-scale', scale);
+      cloud.style.opacity = `${0.15 + Math.random() * 0.2}`;
+      cloud.style.animationDuration = `${45 + Math.random() * 30}s`;
+      cloud.style.animationDelay = `${-Math.random() * 60}s`;
+      weatherEffects.appendChild(cloud);
     }
   }
 }

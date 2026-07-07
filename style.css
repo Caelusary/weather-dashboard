@@ -108,12 +108,65 @@ body {
   50% { opacity: 0.6; }
 }
 
+.ember {
+  position: absolute;
+  bottom: -5%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 214, 130, 0.95) 0%, rgba(255, 110, 40, 0.85) 55%, rgba(255, 60, 20, 0) 100%);
+  box-shadow: 0 0 6px rgba(255, 120, 40, 0.6);
+  animation: ember-rise linear infinite;
+}
+
+@keyframes ember-rise {
+  0% { transform: translate(0, 0); opacity: 0; }
+  10% { opacity: 0.9; }
+  85% { opacity: 0.5; }
+  100% { transform: translate(var(--drift, 15px), -110vh); opacity: 0; }
+}
+
+.drift-cloud {
+  position: absolute;
+  left: -25%;
+  width: 120px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 100px;
+  animation: cloud-drift linear infinite;
+}
+
+.drift-cloud::before,
+.drift-cloud::after {
+  content: '';
+  position: absolute;
+  background: inherit;
+  border-radius: 50%;
+}
+
+.drift-cloud::before {
+  width: 50px;
+  height: 50px;
+  top: -25px;
+  left: 15px;
+}
+
+.drift-cloud::after {
+  width: 34px;
+  height: 34px;
+  top: -16px;
+  left: 65px;
+}
+
+@keyframes cloud-drift {
+  from { transform: translateX(0) scale(var(--cloud-scale, 1)); }
+  to { transform: translateX(140vw) scale(var(--cloud-scale, 1)); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bg-layer {
     transition-duration: 0.3s;
   }
 
-  .snowflake, .raindrop, .sun-ray {
+  .snowflake, .raindrop, .sun-ray, .ember, .drift-cloud {
     animation: none;
   }
 }
