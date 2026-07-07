@@ -9,21 +9,113 @@ body {
   align-items: center;
   justify-content: center;
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 50%, #667eea 100%);
+  background-color: #16213e;
   color: #1a1a2e;
+  overflow-x: hidden;
 }
 
 .app {
+  position: relative;
   width: 100%;
   max-width: 420px;
   padding: 2rem;
   margin: 1rem;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(15, 15, 35, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 20px;
   backdrop-filter: blur(16px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
   text-align: center;
+}
+
+/* ===== WEATHER-THEMED BACKGROUNDS ===== */
+/* Two stacked full-viewport layers crossfade via opacity so gradients
+   (which CSS can't animate directly) transition smoothly. */
+.bg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  opacity: 0;
+  transition: opacity 1.6s ease;
+  pointer-events: none;
+}
+
+.bg-layer--visible {
+  opacity: 1;
+}
+
+.theme-default      { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 50%, #667eea 100%); }
+.theme-clear         { background: linear-gradient(135deg, #ffb347 0%, #ff6b6b 100%); }
+.theme-clouds        { background: linear-gradient(135deg, #bdc3c7 0%, #95a5a6 100%); }
+.theme-rain          { background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%); }
+.theme-thunderstorm  { background: linear-gradient(135deg, #0f0c29 0%, #302b63 100%); }
+.theme-snow          { background: linear-gradient(135deg, #e6dada 0%, #274046 100%); }
+.theme-fog           { background: linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%); }
+.theme-night         { background: linear-gradient(135deg, #0a0a2e 0%, #1a1a3e 100%); }
+.theme-hot           { background: linear-gradient(135deg, #f12711 0%, #f5af19 100%); }
+.theme-cold          { background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%); }
+
+/* ===== WEATHER PARTICLE EFFECTS ===== */
+.weather-effects {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.snowflake {
+  position: absolute;
+  top: -10%;
+  color: #fff;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+  animation: snowfall linear infinite;
+}
+
+@keyframes snowfall {
+  0% { transform: translateY(0) translateX(0); }
+  50% { transform: translateY(50vh) translateX(15px); }
+  100% { transform: translateY(110vh) translateX(-15px); }
+}
+
+.raindrop {
+  position: absolute;
+  top: -5%;
+  width: 2px;
+  height: 60px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.55));
+  animation: rainfall linear infinite;
+}
+
+@keyframes rainfall {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(110vh); }
+}
+
+.sun-ray {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 45vh;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.25));
+  transform-origin: top center;
+  animation: sunpulse 4s ease-in-out infinite;
+}
+
+@keyframes sunpulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-layer {
+    transition-duration: 0.3s;
+  }
+
+  .snowflake, .raindrop, .sun-ray {
+    animation: none;
+  }
 }
 
 /* ===== HEADER ===== */
@@ -195,10 +287,13 @@ body {
 
 /* ===== WEATHER CARD ===== */
 .card {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(20, 20, 35, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 16px;
   padding: 1.5rem;
   color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: background 0.6s ease;
 }
 
 .card__city {

@@ -20,11 +20,16 @@ const humidity = document.getElementById('humidity');
 const feelsLike = document.getElementById('feels-like');
 const weatherIcon = document.getElementById('weather-icon');
 
+const bgLayerA = document.getElementById('bg-layer-a');
+const bgLayerB = document.getElementById('bg-layer-b');
+const weatherEffects = document.getElementById('weather-effects');
+
 // State
 let currentUnit = localStorage.getItem('unit') || 'metric';
 let currentCity = '';
 let currentCityData = null;
 let userCoords = null;
+let activeBgLayer = 'a';
 
 // Popular cities (pre-populated with specific locations)
 const POPULAR_CITIES = [
@@ -83,11 +88,24 @@ function distanceFromUser(lat, lon) {
   return R * c;
 }
 
-// Sorts closest-first when the user's location is known; otherwise
-// returns the list unchanged (default behavior).
-function sortByDistance(cities) {
-  if (!userCoords) return cities;
-  return [...cities].sort((a, b) => distanceFromUser(a.lat, a.lon) - distanceFromUser(b.lat, b.lon));
+function normalizeForMatch(str) {
+  return str.trim().toLowerCase();
+}
+
+// Sorts cities whose name exactly matches the searched-for city name to the
+// top (e.g. "Batangas City" itself ahead of unrelated partial matches), then
+// by distance from the user within each group when location is known.
+function sortCityResults(cities, query) {
+  const queryName = normalizeForMatch(parseCityInput(query)?.name ?? query);
+
+  return [...cities].sort((a, b) => {
+    const aExact = normalizeForMatch(a.name) === queryName;
+    const bExact = normalizeForMatch(b.name) === queryName;
+    if (aExact !== bExact) return aExact ? -1 : 1;
+
+    if (!userCoords) return 0;
+    return distanceFromUser(a.lat, a.lon) - distanceFromUser(b.lat, b.lon);
+  });
 }
 
 // Unit Toggle
@@ -166,7 +184,7 @@ async function fetchWeather(city) {
       await fetchWeatherByCoords(cityData.lat, cityData.lon);
     } else {
       loading.classList.add('hidden');
-      showCitySelection(sortByDistance(cities));
+      showCitySelection(sortCityResults(cities, city));
     }
   } catch {
     showError('Something went wrong while fetching the city data.');
@@ -304,7 +322,7 @@ async function getCitySuggestions(query) {
       lon: city.lon,
       display: city.state ? `${city.name}, ${city.state}, ${city.country}` : `${city.name}, ${city.country}`
     }));
-    return sortByDistance(suggestions);
+    return sortCityResults(suggestions, query);
   } catch {
     return [];
   }
@@ -410,6 +428,88 @@ function renderWeather(data) {
     lat: data.coord.lat,
     lon: data.coord.lon
   };
+
+  applyWeatherTheme(resolveWeatherTheme(data));
+}
+
+const ATMOSPHERE_CONDITIONS = ['Mist', 'Smoke', 'Haze', 'Dust', 'Fog', 'Sand', 'Ash', 'Squall', 'Tornado'];
+
+// Maps live weather data to a background theme key. Dramatic precipitation
+// or atmosphere conditions always win, since they already have their own
+// distinct look; a calm clear/cloudy sky falls back to night/hot/cold/
+// clear/clouds based on time of day (from the icon's day/night suffix)
+// and temperature (converted to Celsius regardless of the display unit).
+function resolveWeatherTheme(data) {
+  const main = data.weather[0].main;
+  const isNight = data.weather[0].icon.endsWith('n');
+  const tempC = currentUnit === 'metric' ? data.main.temp : (data.main.temp - 32) * 5 / 9;
+
+  if (main === 'Thunderstorm') return 'thunderstorm';
+  if (main === 'Snow') return 'snow';
+  if (main === 'Rain' || main === 'Drizzle') return 'rain';
+  if (ATMOSPHERE_CONDITIONS.includes(main)) return 'fog';
+
+  if (isNight) return 'night';
+  if (tempC >= 30) return 'hot';
+  if (tempC <= 5) return 'cold';
+  return main === 'Clear' ? 'clear' : 'clouds';
+}
+
+// Crossfades to the new theme by fading in the hidden background layer
+// and fading out the currently visible one.
+function applyWeatherTheme(themeKey) {
+  const incoming = activeBgLayer === 'a' ? bgLayerB : bgLayerA;
+  const outgoing = activeBgLayer === 'a' ? bgLayerA : bgLayerB;
+
+  incoming.className = `bg-layer theme-${themeKey}`;
+
+  requestAnimationFrame(() => {
+    incoming.classList.add('bg-layer--visible');
+    outgoing.classList.remove('bg-layer--visible');
+  });
+
+  activeBgLayer = activeBgLayer === 'a' ? 'b' : 'a';
+  renderWeatherEffects(themeKey);
+}
+
+function clearWeatherEffects() {
+  weatherEffects.innerHTML = '';
+}
+
+// Subtle floating particles for a few themes; other themes stay clean.
+function renderWeatherEffects(themeKey) {
+  clearWeatherEffects();
+
+  if (themeKey === 'snow') {
+    for (let i = 0; i < 40; i++) {
+      const flake = document.createElement('span');
+      flake.className = 'snowflake';
+      flake.textContent = '❄';
+      flake.style.left = `${Math.random() * 100}%`;
+      flake.style.fontSize = `${0.5 + Math.random() * 1}rem`;
+      flake.style.opacity = `${0.4 + Math.random() * 0.6}`;
+      flake.style.animationDuration = `${8 + Math.random() * 6}s`;
+      flake.style.animationDelay = `${Math.random() * 8}s`;
+      weatherEffects.appendChild(flake);
+    }
+  } else if (themeKey === 'rain' || themeKey === 'thunderstorm') {
+    for (let i = 0; i < 50; i++) {
+      const drop = document.createElement('span');
+      drop.className = 'raindrop';
+      drop.style.left = `${Math.random() * 100}%`;
+      drop.style.animationDuration = `${0.4 + Math.random() * 0.35}s`;
+      drop.style.animationDelay = `${Math.random() * 2}s`;
+      weatherEffects.appendChild(drop);
+    }
+  } else if (themeKey === 'clear' || themeKey === 'hot') {
+    for (let i = 0; i < 8; i++) {
+      const ray = document.createElement('span');
+      ray.className = 'sun-ray';
+      ray.style.transform = `rotate(${i * (360 / 8)}deg)`;
+      ray.style.animationDelay = `${i * 0.2}s`;
+      weatherEffects.appendChild(ray);
+    }
+  }
 }
 
 // Error Handling
