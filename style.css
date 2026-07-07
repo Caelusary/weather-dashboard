@@ -196,10 +196,13 @@ body {
 
 /* ===== HEADER ===== */
 /* A fixed-size .header__controls group anchored right, and a title that
-   can truncate (never wrap to a 2nd line or push controls around) anchored
-   left — this is what keeps the header identical in every language: the
-   title's translated length varies a lot (e.g. "Weather Dashboard" vs
-   "天气仪表盘"), but the box geometry of every element never does. */
+   takes the rest of the row, anchored left — this is what keeps the header
+   identical in every language: the title's translated length varies a lot
+   (e.g. "Weather Dashboard" vs "天气仪表盘"), but the box geometry of every
+   element never does. The title is never truncated — its font-size is
+   tuned to fit this app's fixed 480px width alongside the fixed-width
+   controls without an ellipsis; it can still wrap to a 2nd line rather
+   than being cut off in any edge case (e.g. unusual browser font zoom). */
 .app__header {
   display: flex;
   flex-wrap: nowrap;
@@ -213,11 +216,9 @@ body {
   flex: 1 1 auto;
   min-width: 0;
   margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: #fff;
-  font-size: 1.75rem;
+  font-size: 1rem;
+  line-height: 1.25;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
@@ -791,6 +792,12 @@ body {
     align-items: flex-start;
     gap: 0.85rem;
     margin-bottom: 1.5rem;
+  }
+
+  /* Stacked layout gives the title its own full-width row, so there's no
+     space pressure here — restore the larger, more prominent size. */
+  .app__title {
+    font-size: 1.5rem;
   }
 
   .header__controls {
