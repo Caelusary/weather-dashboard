@@ -518,6 +518,7 @@ async function fetchWeather(city) {
       currentCityData = cityData;
       currentCityState = cityData.state || '';
       saveSearchHistory(cityData);
+      saveRecentSearch(cityData);
       await fetchWeatherByCoords(cityData.lat, cityData.lon);
     } else {
       loading.classList.add('hidden');
@@ -688,6 +689,7 @@ async function fetchWeatherByCity(city, country) {
     currentCityData = cityData;
     currentCityState = cityData.state || '';
     saveSearchHistory(cityData);
+    saveRecentSearch(cityData);
     await fetchWeatherByCoords(cityData.lat, cityData.lon);
   } catch {
     showError(t('errorCityCountryFailed', city, country));
@@ -707,11 +709,6 @@ function showCitySelection(cities) {
       ${cities.map((city) => `
         <button
           class="city-select-btn"
-          data-lat="${city.lat}"
-          data-lon="${city.lon}"
-          data-state="${city.state || ''}"
-          data-name="${city.name}"
-          data-country="${city.country}"
           style="
             background: rgba(255,255,255,0.2);
             border: 1px solid rgba(255,255,255,0.3);
@@ -732,15 +729,18 @@ function showCitySelection(cities) {
     </div>
   `;
 
-  document.querySelectorAll('.city-select-btn').forEach(btn => {
+  // Closures over the original `cities` objects (which already carry OWM's
+  // local_names natively) rather than round-tripping through data-*
+  // attributes — simpler, and avoids serializing an object into HTML.
+  document.querySelectorAll('.city-select-btn').forEach((btn, i) => {
     btn.addEventListener('click', () => {
-      const lat = parseFloat(btn.dataset.lat);
-      const lon = parseFloat(btn.dataset.lon);
-      currentCityData = { lat, lon };
-      currentCityState = btn.dataset.state || '';
-      input.value = btn.textContent.split('(')[0].trim();
-      saveSearchHistory({ name: btn.dataset.name, country: btn.dataset.country, state: btn.dataset.state, lat, lon });
-      fetchWeatherByCoords(lat, lon);
+      const city = cities[i];
+      currentCityData = { lat: city.lat, lon: city.lon };
+      currentCityState = city.state || '';
+      input.value = city.name;
+      saveSearchHistory(city);
+      saveRecentSearch(city);
+      fetchWeatherByCoords(city.lat, city.lon);
       errorMessage.classList.add('hidden');
     });
   });
@@ -774,7 +774,8 @@ async function getCitySuggestions(query) {
       state: city.state || '',
       lat: city.lat,
       lon: city.lon,
-      isRecent: recentCities.some(r => normalizeForMatch(r) === normalizeForMatch(city.name)),
+      localNames: city.local_names || {},
+      isRecent: recentCities.some(r => normalizeForMatch(r.name) === normalizeForMatch(city.name)),
       display: city.state ? `${city.name}, ${city.state}, ${city.country}` : `${city.name}, ${city.country}`
     }));
     // sortCityResults ranks by name-match relevance/distance; a stable
@@ -794,38 +795,67 @@ function renderSuggestions(suggestions) {
   }
 
   suggestionsContainer.innerHTML = suggestions.map(s => `
-    <div class="suggestions__item" data-lat="${s.lat}" data-lon="${s.lon}" data-name="${s.name}" data-state="${s.state || ''}" data-country="${s.country}">
+    <div class="suggestions__item">
       ${s.display}${s.isRecent ? '<span style="margin-left: 0.5rem; font-size: 0.75rem; opacity: 0.65;">🕒 Recent</span>' : ''}
     </div>
   `).join('');
 
   suggestionsContainer.classList.remove('hidden');
 
-  suggestionsContainer.querySelectorAll('.suggestions__item').forEach(el => {
+  // Closures over the original `suggestions` objects (rather than reading
+  // back from data-* attributes) so localNames — an object, not a string —
+  // survives intact for saveRecentSearch without needing JSON-in-HTML.
+  suggestionsContainer.querySelectorAll('.suggestions__item').forEach((el, i) => {
     el.addEventListener('click', () => {
-      const lat = parseFloat(el.dataset.lat);
-      const lon = parseFloat(el.dataset.lon);
-      const name = el.dataset.name;
-      input.value = name;
-      currentCityData = { lat, lon };
-      currentCityState = el.dataset.state || '';
-      saveSearchHistory({ name, country: el.dataset.country, state: el.dataset.state, lat, lon });
-      fetchWeatherByCoords(lat, lon);
-      saveRecentSearch(name);
+      const s = suggestions[i];
+      input.value = s.name;
+      currentCityData = { lat: s.lat, lon: s.lon };
+      currentCityState = s.state || '';
+      saveSearchHistory(s);
+      saveRecentSearch(s);
+      fetchWeatherByCoords(s.lat, s.lon);
       suggestionsContainer.classList.add('hidden');
     });
   });
 }
 
 // Recent Searches
+// Entries are full city records (not just names) so the chip label can be
+// localized per UI language via OpenWeatherMap's own local_names field
+// (already present on every geocoding response — no extra API call).
 function getRecentCities() {
-  return JSON.parse(localStorage.getItem('recentCities')) || [];
+  const raw = JSON.parse(localStorage.getItem('recentCities')) || [];
+  // Migrates any pre-existing plain-string entries (old schema) into the
+  // richer shape so old localStorage data doesn't break or get discarded.
+  return raw.map(entry => typeof entry === 'string'
+    ? { name: entry, country: '', state: '', lat: null, lon: null, localNames: {} }
+    : entry
+  );
 }
 
-function saveRecentSearch(city) {
+// Displays a recent-search chip in the current UI language when
+// OpenWeatherMap has a translation for it, falling back to the name as
+// returned by the API otherwise (most cities only have a handful of
+// languages covered). This is intentionally scoped to just the recent
+// chips — the main weather card, history log, and search suggestions all
+// keep the canonical spelling, per the original "don't translate city
+// names" requirement.
+function localizedCityName(cityData) {
+  const localNames = cityData.localNames || cityData.local_names || {};
+  return localNames[currentLanguage] || cityData.name;
+}
+
+function saveRecentSearch(cityData) {
   let recent = getRecentCities();
-  recent = recent.filter(c => c.toLowerCase() !== city.toLowerCase());
-  recent.unshift(city);
+  recent = recent.filter(c => normalizeForMatch(c.name) !== normalizeForMatch(cityData.name));
+  recent.unshift({
+    name: cityData.name,
+    country: cityData.country || '',
+    state: cityData.state || '',
+    lat: cityData.lat,
+    lon: cityData.lon,
+    localNames: cityData.localNames || cityData.local_names || {}
+  });
   recent = recent.slice(0, 5);
   localStorage.setItem('recentCities', JSON.stringify(recent));
   renderRecentSearches();
@@ -839,15 +869,23 @@ function renderRecentSearches() {
   }
 
   recentList.innerHTML = recent.map(city => `
-    <span class="recent-item" data-city="${city}">${city}</span>
+    <span class="recent-item">${localizedCityName(city)}</span>
   `).join('');
 
-  recentList.querySelectorAll('.recent-item').forEach(el => {
+  recentList.querySelectorAll('.recent-item').forEach((el, i) => {
     el.addEventListener('click', () => {
-      const city = el.dataset.city;
-      input.value = city;
-      currentCity = city;
-      fetchWeather(city);
+      const city = recent[i];
+      input.value = city.name;
+      if (city.lat != null && city.lon != null) {
+        currentCityData = { lat: city.lat, lon: city.lon };
+        currentCityState = city.state || '';
+        fetchWeatherByCoords(city.lat, city.lon);
+      } else {
+        // Legacy entry saved before lat/lon were tracked — fall back to
+        // re-geocoding by name.
+        currentCity = city.name;
+        fetchWeather(city.name);
+      }
     });
   });
 }
@@ -864,8 +902,10 @@ function renderPopularCities() {
       const country = el.dataset.country;
       input.value = city;
       currentCity = city;
+      // fetchWeatherByCity saves both the search history entry and the
+      // recent-search chip itself once it resolves the full city record
+      // (including local_names) — no separate save needed here.
       fetchWeatherByCity(city, country);
-      saveRecentSearch(city);
     });
   });
 }
