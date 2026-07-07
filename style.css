@@ -166,12 +166,30 @@ body {
   to { transform: translateX(140vw) scale(var(--cloud-scale, 1)); }
 }
 
+/* Small static dots layered in .weather-effects (z-index: -1), which
+   sits in front of the .bg-layer gradient (z-index: -2) — so the stars
+   read as part of the night sky rather than being hidden behind its
+   opaque background. Each twinkles independently between a random dim
+   floor (--twinkle-min) and full brightness. */
+.star {
+  position: absolute;
+  background: #fff;
+  border-radius: 50%;
+  opacity: 1;
+  animation: twinkle ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: var(--twinkle-min, 0.2); }
+  50% { opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bg-layer {
     transition-duration: 0.3s;
   }
 
-  .snowflake, .raindrop, .sun-ray, .ember, .drift-cloud {
+  .snowflake, .raindrop, .sun-ray, .ember, .drift-cloud, .star {
     animation: none;
   }
 }

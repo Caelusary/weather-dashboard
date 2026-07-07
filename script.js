@@ -965,6 +965,20 @@ function renderWeatherEffects(themeKey) {
       ember.style.animationDelay = `${Math.random() * 6}s`;
       weatherEffects.appendChild(ember);
     }
+  } else if (themeKey === 'night') {
+    for (let i = 0; i < 70; i++) {
+      const star = document.createElement('span');
+      star.className = 'star';
+      const size = Math.random() < 0.85 ? 1 + Math.random() : 2 + Math.random();
+      star.style.top = `${Math.random() * 100}%`;
+      star.style.left = `${Math.random() * 100}%`;
+      star.style.width = `${size}px`;
+      star.style.height = `${size}px`;
+      star.style.setProperty('--twinkle-min', `${0.15 + Math.random() * 0.25}`);
+      star.style.animationDuration = `${2 + Math.random() * 3}s`;
+      star.style.animationDelay = `${-Math.random() * 5}s`;
+      weatherEffects.appendChild(star);
+    }
   } else if (themeKey === 'clouds') {
     for (let i = 0; i < 5; i++) {
       const cloud = document.createElement('span');
