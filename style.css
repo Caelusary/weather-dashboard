@@ -217,24 +217,35 @@ body {
 }
 
 .language-select {
-  background: rgba(255, 255, 255, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  padding: 0.5rem 0.6rem;
+  background: #fff;
+  border: 3px solid #000;
+  color: #000;
+  padding: 0.5rem 0.75rem;
   border-radius: 2rem;
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 600;
-  transition: all 0.3s ease;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .language-select:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: #fff;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.45);
+  transform: translateY(-1px);
+}
+
+.language-select:focus,
+.language-select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.25), 0 5px 12px rgba(0, 0, 0, 0.45);
 }
 
 .language-select option {
-  color: #1a1a2e;
+  color: #000;
   background: #fff;
+  padding: 0.6rem 0.9rem;
+  font-weight: 600;
 }
 
 /* ===== TABS ===== */
