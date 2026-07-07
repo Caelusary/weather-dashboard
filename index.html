@@ -7,44 +7,61 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="app">
-    <h1 class="app__title">Weather Dashboard</h1>
-
-    <form id="search-form" class="search">
-      <input
-        type="text"
-        id="city-input"
-        class="search__input"
-        placeholder="Enter a city name..."
-        autocomplete="off"
-      />
-      <button type="submit" class="search__button">Search</button>
-    </form>
-
-    <p id="error-message" class="error hidden"></p>
-
-    <div id="weather-card" class="card hidden">
-      <h2 id="city-name" class="card__city"></h2>
-      <p id="condition" class="card__condition"></p>
-      <div class="card__main">
-        <span id="temperature" class="card__temperature"></span>
-      </div>
-      <div class="card__details">
-        <div class="card__detail">
-          <span class="card__detail-label">Humidity</span>
-          <span id="humidity" class="card__detail-value"></span>
-        </div>
-        <div class="card__detail">
-          <span class="card__detail-label">Feels Like</span>
-          <span id="feels-like" class="card__detail-value"></span>
-        </div>
-      </div>
-    </div>
-
-    <div id="loading" class="loading hidden">Loading...</div>
+<div class="app">
+  <div class="app__header">
+    <h1 class="app__title">🌤️ Weather Dashboard</h1>
+    <button id="unit-toggle" class="unit-toggle" title="Toggle temperature unit">°C/°F</button>
   </div>
 
-  <script src="config.js"></script>
-  <script src="script.js"></script>
+  <form id="search-form" class="search">
+    <div class="search__wrapper">
+      <input
+              type="text"
+              id="city-input"
+              class="search__input"
+              placeholder="Enter a city name..."
+              autocomplete="off"
+      />
+      <button type="submit" class="search__button">Search</button>
+    </div>
+    <div id="suggestions" class="suggestions hidden"></div>
+  </form>
+
+  <div id="recent-searches" class="recent-searches">
+    <span class="recent-label">🕒 Recent:</span>
+    <div id="recent-list" class="recent-list"></div>
+  </div>
+
+  <p id="error-message" class="error hidden"></p>
+
+  <div id="weather-card" class="card hidden">
+    <h2 id="city-name" class="card__city"></h2>
+    <p id="condition" class="card__condition"></p>
+    <div class="card__main">
+      <img id="weather-icon" class="card__icon" alt="Weather condition icon" />
+      <span id="temperature" class="card__temperature"></span>
+    </div>
+    <div class="card__details">
+      <div class="card__detail">
+        <span class="card__detail-label">💧 Humidity</span>
+        <span id="humidity" class="card__detail-value"></span>
+      </div>
+      <div class="card__detail">
+        <span class="card__detail-label">🌡️ Feels Like</span>
+        <span id="feels-like" class="card__detail-value"></span>
+      </div>
+    </div>
+  </div>
+
+  <div id="popular-cities" class="popular-cities">
+    <h3>🌍 Popular Cities</h3>
+    <div id="popular-list" class="popular-list"></div>
+  </div>
+
+  <div id="loading" class="loading hidden">Loading...</div>
+</div>
+
+<script src="config.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
