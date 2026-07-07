@@ -353,15 +353,21 @@ async function getCitySuggestions(query) {
     const response = await fetch(url);
     if (!response.ok) return [];
     const data = await response.json();
+    const recentCities = getRecentCities();
     const suggestions = data.map(city => ({
       name: city.name,
       country: city.country,
       state: city.state || '',
       lat: city.lat,
       lon: city.lon,
+      isRecent: recentCities.some(r => normalizeForMatch(r) === normalizeForMatch(city.name)),
       display: city.state ? `${city.name}, ${city.state}, ${city.country}` : `${city.name}, ${city.country}`
     }));
-    return sortCityResults(suggestions, query);
+    // sortCityResults ranks by name-match relevance/distance; a stable
+    // re-sort on top of that floats recent searches to the very top
+    // without disturbing their relative order otherwise.
+    return sortCityResults(suggestions, query)
+      .sort((a, b) => Number(b.isRecent) - Number(a.isRecent));
   } catch {
     return [];
   }
@@ -375,7 +381,7 @@ function renderSuggestions(suggestions) {
 
   suggestionsContainer.innerHTML = suggestions.map(s => `
     <div class="suggestions__item" data-lat="${s.lat}" data-lon="${s.lon}" data-name="${s.name}" data-state="${s.state || ''}">
-      ${s.display}
+      ${s.display}${s.isRecent ? '<span style="margin-left: 0.5rem; font-size: 0.75rem; opacity: 0.65;">🕒 Recent</span>' : ''}
     </div>
   `).join('');
 
@@ -397,8 +403,12 @@ function renderSuggestions(suggestions) {
 }
 
 // Recent Searches
+function getRecentCities() {
+  return JSON.parse(localStorage.getItem('recentCities')) || [];
+}
+
 function saveRecentSearch(city) {
-  let recent = JSON.parse(localStorage.getItem('recentCities')) || [];
+  let recent = getRecentCities();
   recent = recent.filter(c => c.toLowerCase() !== city.toLowerCase());
   recent.unshift(city);
   recent = recent.slice(0, 5);
@@ -407,7 +417,7 @@ function saveRecentSearch(city) {
 }
 
 function renderRecentSearches() {
-  const recent = JSON.parse(localStorage.getItem('recentCities')) || [];
+  const recent = getRecentCities();
   if (recent.length === 0) {
     recentList.innerHTML = '<span style="color: rgba(255,255,255,0.5); font-size: 0.85rem;">No recent searches</span>';
     return;
