@@ -135,8 +135,8 @@ const TRANSLATIONS = {
     errorCityCountryFailed: (city, country) => `Could not find city "${city}, ${country}".`
   },
   es: {
-    appTitleLine1: '🌤️ Panel del',
-    appTitleLine2: 'Clima',
+    appTitleLine1: '🌤️ Weather',
+    appTitleLine2: 'Dashboard',
     tabWeather: '🌤️ Clima',
     tabHistory: '📜 Historial',
     searchPlaceholder: 'Introduce el nombre de una ciudad...',
