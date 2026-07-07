@@ -3,7 +3,6 @@ const API_URL = 'https://api.openweathermap.org/data/2.5/weather';
 const FORECAST_URL = 'https://api.openweathermap.org/data/2.5/forecast';
 const GEO_URL = 'https://api.openweathermap.org/geo/1.0/direct';
 
-// DOM Elements
 const form = document.getElementById('search-form');
 const input = document.getElementById('city-input');
 const suggestionsContainer = document.getElementById('suggestions');
@@ -47,32 +46,24 @@ const bgLayerA = document.getElementById('bg-layer-a');
 const bgLayerB = document.getElementById('bg-layer-b');
 const weatherEffects = document.getElementById('weather-effects');
 
-// State
 let currentUnit = localStorage.getItem('unit') || 'metric';
 let currentCity = '';
 let currentCityData = null;
-// State/province of the currently displayed city, if the geocoding result
-// had one. Tracked separately from currentCityData because renderWeather
-// overwrites currentCityData with the weather API's bare {lat, lon} once
-// the coords fetch resolves, which would otherwise drop this.
+// Tracked separately because renderWeather overwrites currentCityData with
+// the API's bare {lat, lon}, which would otherwise drop this.
 let currentCityState = '';
 let userCoords = null;
 let activeBgLayer = 'a';
-// Incremented at the moment each user-initiated search begins (via the
-// `requestId = ++latestWeatherRequestId` default parameters below) so that
-// a slow/out-of-order response for an older search can be detected and
-// dropped instead of overwriting the UI with stale data. See
-// fetchWeather/fetchWeatherByCity/fetchWeatherByCoords/fetchForecast.
+// Bumped at the start of each search; fetch functions drop their response
+// if a newer search has started by the time it resolves (see requestId
+// params below), so a slow/out-of-order response can't overwrite the UI.
 let latestWeatherRequestId = 0;
 let currentLanguage = localStorage.getItem('language') || 'en';
-// Last successfully rendered weather payload, kept only so a language
-// change can retranslate the condition text without an extra API call.
+// Last rendered weather/forecast payloads, kept only so a language change
+// can retranslate/re-render without an extra API call.
 let lastWeatherData = null;
-// Same idea for the 5-day forecast, so a language change can re-render
-// day names/conditions without re-fetching.
 let lastForecastData = null;
 
-// Popular cities (pre-populated with specific locations)
 const POPULAR_CITIES = [
   { name: 'London', country: 'GB' },
   { name: 'New York', country: 'US' },
@@ -84,8 +75,7 @@ const POPULAR_CITIES = [
   { name: 'Mumbai', country: 'IN' }
 ];
 
-// Translations for the 5 most-spoken languages. Values that need
-// interpolation (e.g. a city name) are functions instead of plain strings.
+// Values needing interpolation (e.g. a city name) are functions, not strings.
 const TRANSLATIONS = {
   en: {
     appTitleLine1: '🌤️ Weather',
@@ -259,9 +249,8 @@ const TRANSLATIONS = {
   }
 };
 
-// Common OpenWeatherMap condition descriptions (always returned in English
-// by the API) mapped to their translation in each supported language.
-// Anything not in this table just falls back to the original English text.
+// OWM always returns condition text in English; anything missing here
+// falls back to the original English string.
 const WEATHER_CONDITION_TRANSLATIONS = {
   'clear sky': { es: 'cielo despejado', zh: '晴朗', hi: 'साफ़ आसमान', ar: 'سماء صافية' },
   'few clouds': { es: 'algo de nubes', zh: '少云', hi: 'हल्के बादल', ar: 'غيوم قليلة' },
@@ -287,31 +276,22 @@ const WEATHER_CONDITION_TRANSLATIONS = {
   'squalls': { es: 'ráfagas de viento', zh: '狂风', hi: 'तेज़ आंधी', ar: 'عواصف' }
 };
 
-// Looks up `key` in the current language, falling back to English if the
-// key or language is incomplete. Interpolated entries are functions.
 function t(key, ...args) {
   const entry = TRANSLATIONS[currentLanguage]?.[key] ?? TRANSLATIONS.en[key];
   return typeof entry === 'function' ? entry(...args) : entry;
 }
 
-// Translates a weather condition description (as returned by the API, e.g.
-// "light rain") into the current language via WEATHER_CONDITION_TRANSLATIONS.
 function translateCondition(description) {
   if (currentLanguage === 'en') return description;
   const entry = WEATHER_CONDITION_TRANSLATIONS[description.toLowerCase()];
   return entry?.[currentLanguage] ?? description;
 }
 
-// Applies the current language to every static piece of UI text, plus the
-// weather card's condition (retranslated from the last fetched data, if
-// any, without re-hitting the API) and the currently rendered lists.
 function applyTranslations() {
   document.documentElement.lang = currentLanguage;
-  // Layout intentionally stays LTR for every language, including Arabic —
-  // only the text content translates. Switching `dir` to "rtl" would flip
-  // the whole page's flex/alignment direction, which reads as a layout
-  // glitch rather than a real Arabic UI (this app doesn't mirror its
-  // iconography/controls to actually support an RTL layout).
+  // Layout intentionally stays LTR even for Arabic — only text translates.
+  // This app's iconography/controls aren't mirrored for a real RTL layout,
+  // so flipping `dir` would look like a broken layout, not a localized one.
   languageSelect.value = currentLanguage;
 
   appTitleLine1El.textContent = t('appTitleLine1');
@@ -348,7 +328,6 @@ languageSelect.addEventListener('change', () => {
   applyTranslations();
 });
 
-// Initialize
 document.addEventListener('DOMContentLoaded', () => {
   updateUnitToggleText();
   applyTranslations();
@@ -356,7 +335,6 @@ document.addEventListener('DOMContentLoaded', () => {
   requestUserLocation();
 });
 
-// Tabs (Weather / History)
 function switchView(view) {
   const isWeather = view === 'weather';
   weatherView.classList.toggle('hidden', !isWeather);
@@ -412,12 +390,9 @@ function normalizeForMatch(str) {
   return str.trim().toLowerCase();
 }
 
-// Escapes text before it's interpolated into an innerHTML template string.
-// Applied to anything that ultimately comes from the OpenWeatherMap API
-// (city/state/country names, weather condition descriptions) since that
-// data isn't attacker-uncontrolled by construction — the geocoding endpoint
-// is backed by community-editable place-name data — and must not be able
-// to inject markup into the page.
+// Escapes API-sourced text (city/state/country names, condition text)
+// before it's interpolated into innerHTML — the geocoding endpoint is
+// backed by community-editable place-name data, so it isn't safe as-is.
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -427,17 +402,15 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-// Looks up a plain (comma-less) query against POPULAR_CITIES so well-known
-// major cities (e.g. "Dubai" -> Dubai, AE) can be prioritized over obscure
-// same-named towns that the geocoding API also returns.
+// Matches a plain query against POPULAR_CITIES so well-known cities (e.g.
+// "Dubai") outrank obscure same-named towns the geocoding API also returns.
 function findPopularCity(name) {
   const normalized = normalizeForMatch(name);
   return POPULAR_CITIES.find(c => normalizeForMatch(c.name) === normalized) || null;
 }
 
-// Ranks a city result: 0 = exact name match that is also the well-known
-// POPULAR_CITIES entry for that name (e.g. Dubai, AE over an obscure
-// same-named village), 1 = exact name match only, 2 = everything else.
+// 0 = exact match on a known POPULAR_CITIES entry, 1 = exact name match
+// only, 2 = everything else.
 function cityRank(city, queryName) {
   const nameExact = normalizeForMatch(city.name) === queryName;
   if (!nameExact) return 2;
@@ -447,8 +420,7 @@ function cityRank(city, queryName) {
   return 1;
 }
 
-// Sorts cities by rank (see cityRank) first, then by distance from the user
-// within each rank tier when location is known.
+// Sorts by rank (see cityRank), then by distance from the user within a tier.
 function sortCityResults(cities, query) {
   const queryName = normalizeForMatch(parseCityInput(query)?.name ?? query);
 
@@ -461,7 +433,6 @@ function sortCityResults(cities, query) {
   });
 }
 
-// Unit Toggle
 unitToggle.addEventListener('click', () => {
   currentUnit = currentUnit === 'metric' ? 'imperial' : 'metric';
   localStorage.setItem('unit', currentUnit);
@@ -478,7 +449,6 @@ function updateUnitToggleText() {
   unitToggle.textContent = currentUnit === 'metric' ? '°C' : '°F';
 }
 
-// Search Form
 form.addEventListener('submit', (event) => {
   event.preventDefault();
   const city = input.value.trim();
@@ -507,30 +477,19 @@ function parseCityInput(input) {
   return null;
 }
 
-// Toggles the search button's pending state so a slow in-flight request
-// can't be fired again by a duplicate click/Enter, and so its busy state
-// is exposed to assistive tech (the visual "Loading..." text already
-// covers sighted users via aria-live, but the button itself gave no
-// indication it was mid-request).
+// Blocks duplicate click/Enter during an in-flight request, and exposes
+// the busy state to assistive tech via aria-busy.
 function setSearchPending(isPending) {
   searchButtonEl.disabled = isPending;
   searchButtonEl.setAttribute('aria-busy', String(isPending));
 }
 
-// Fetch weather by city name
-// requestId identifies which user-initiated search this call belongs to.
-// It's minted synchronously (via the default parameter, before any await)
-// at the moment the user acts, or threaded through from a caller that
-// already minted one for the same action. Any response that comes back
-// after a newer search has started is discarded below, so a slow response
-// for an older/abandoned search can never overwrite the UI with stale data
-// (protects against out-of-order responses and rapid double-submits, e.g.
-// searching "London" then quickly "Tokyo" before the first request resolves).
+// requestId is minted at the moment the user acts (see latestWeatherRequestId
+// above) so a stale response from an abandoned search gets dropped instead
+// of overwriting the UI.
 async function fetchWeather(city, requestId = ++latestWeatherRequestId) {
-  // A plain query (no ", Country" suffix) that names a well-known major city
-  // (e.g. "Dubai") is resolved directly against its known country instead of
-  // going through the ambiguous multi-result geocoding path, so it can't be
-  // shadowed by an obscure same-named town.
+  // A plain query naming a well-known city (e.g. "Dubai") resolves directly
+  // against its known country, skipping the ambiguous multi-result path.
   if (!parseCityInput(city)) {
     const popularMatch = findPopularCity(city);
     if (popularMatch) {
@@ -551,10 +510,8 @@ async function fetchWeather(city, requestId = ++latestWeatherRequestId) {
     if (requestId !== latestWeatherRequestId) return;
 
     if (!geoResponse.ok) {
-      // 401/429/5xx previously all fell through to the generic "check the
-      // spelling" message, which is actively misleading when the real
-      // problem is an invalid/missing API key (e.g. a fresh checkout that
-      // copied config.example.js but never added a real key).
+      // Distinguish an invalid/missing API key (401) from a genuine
+      // not-found, since the generic message is misleading otherwise.
       failWithError(geoResponse.status === 401 ? t('errorInvalidApiKey') : t('errorGeocodeFailed'));
       return;
     }
@@ -583,7 +540,6 @@ async function fetchWeather(city, requestId = ++latestWeatherRequestId) {
   }
 }
 
-// Fetch weather by coordinates
 async function fetchWeatherByCoords(lat, lon, requestId = ++latestWeatherRequestId) {
   hideError();
   weatherCard.classList.add('hidden');
@@ -591,14 +547,9 @@ async function fetchWeatherByCoords(lat, lon, requestId = ++latestWeatherRequest
   loading.classList.remove('hidden');
   setSearchPending(true);
 
-  // Kicked off immediately and NOT awaited here: the current-weather and
-  // forecast endpoints are independent (both only need lat/lon), so
-  // firing this in parallel with the fetch below instead of after it
-  // completes removes a full network round-trip from the critical path.
-  // fetchForecast manages its own loading indicator, so it doesn't need
-  // to block or be blocked by the main "Loading..." state. Passing
-  // requestId lets it drop a stale response the same way this function
-  // does below, if a newer search starts before it resolves.
+  // Not awaited: weather and forecast only need lat/lon, so firing both in
+  // parallel removes a full round-trip from the critical path. Forecast
+  // manages its own loading state independently of this function's.
   fetchForecast(lat, lon, requestId);
 
   try {
@@ -623,10 +574,8 @@ async function fetchWeatherByCoords(lat, lon, requestId = ++latestWeatherRequest
   }
 }
 
-// Fetch the 5-day/3-hour forecast and group it into daily high/low +
-// midday condition cards. Fails silently (just hides its own loading
-// state) since the forecast is a supplementary feature — a failure here
-// shouldn't block or overwrite the already-successful current-weather view.
+// Fails silently (just hides its own loading state) since the forecast is
+// supplementary — a failure here shouldn't disrupt the current-weather view.
 async function fetchForecast(lat, lon, requestId) {
   forecastSection.classList.add('hidden');
   forecastLoading.classList.remove('hidden');
@@ -648,13 +597,8 @@ async function fetchForecast(lat, lon, requestId) {
   }
 }
 
-// BCP-47 locale tags for formatting the forecast's weekday names in the
-// currently selected UI language.
 const FORECAST_DAY_LOCALES = { en: 'en-US', es: 'es-ES', zh: 'zh-CN', hi: 'hi-IN', ar: 'ar-SA' };
 
-// Maps a forecast entry's weather condition to a representative emoji
-// (rain gets its own icon rather than falling through to the generic
-// partly-cloudy default) instead of relying on OWM's icon sprite.
 function getForecastIcon(entry) {
   const isNight = entry.weather[0].icon.endsWith('n');
   switch (entry.weather[0].main) {
@@ -671,15 +615,13 @@ function getForecastIcon(entry) {
   }
 }
 
-// Groups the forecast's 3-hour entries into calendar days using the
-// city's own timezone offset (not the browser's), same trick as
-// isDaytimeAt: add the offset to the UTC timestamp, then read the
-// UTC getters back off it as if they were local fields.
+// Groups 3-hour entries into calendar days using the city's own timezone
+// (not the browser's): add the offset to the UTC timestamp, then read UTC
+// getters back off it as if they were local fields.
 function groupForecastByDay(data) {
   const tzOffset = data.city.timezone;
-  // Today (in the city's local date), per the real current time rather
-  // than the forecast list's first entry — excluded below so the strip
-  // always shows the next 5 upcoming days, not today-plus-4.
+  // Computed from the real current time, not the forecast list's first
+  // entry, so the strip always shows the next 5 days, not today-plus-4.
   const cityNow = new Date(Date.now() + tzOffset * 1000);
   const todayKey = `${cityNow.getUTCFullYear()}-${cityNow.getUTCMonth()}-${cityNow.getUTCDate()}`;
   const days = new Map();
@@ -707,8 +649,7 @@ function renderForecast(data) {
     const temps = day.entries.map(e => e.main.temp);
     const high = Math.round(Math.max(...temps));
     const low = Math.round(Math.min(...temps));
-    // Picks the entry closest to 13:00 local time as the day's
-    // representative icon/condition (most "typical" daytime reading).
+    // Closest entry to 13:00 local time stands in as the day's icon/condition.
     const midday = day.entries.reduce((closest, entry) =>
       Math.abs(entry.localHour - 13) < Math.abs(closest.localHour - 13) ? entry : closest
     );
@@ -730,7 +671,6 @@ function renderForecast(data) {
   forecastSection.classList.remove('hidden');
 }
 
-// Fetch weather by city + country
 async function fetchWeatherByCity(city, country, requestId = ++latestWeatherRequestId) {
   hideError();
   weatherCard.classList.add('hidden');
@@ -743,12 +683,9 @@ async function fetchWeatherByCity(city, country, requestId = ++latestWeatherRequ
 
     if (requestId !== latestWeatherRequestId) return;
 
-    // Was previously missing entirely: an unchecked response.ok meant a
-    // 401/429/5xx here (a JSON error body, not an array) fell through to
-    // `cities[0]` as undefined, throwing on `cityData.state` inside
-    // setCurrentCity and surfacing the wrong, misleading "city not found"
-    // message instead of the real cause. This path is hit by every Popular
-    // Cities click (shown on first load), so it mattered a lot.
+    // Without this check, a 401/429/5xx (JSON error body, not an array)
+    // fell through to `cities[0]` as undefined and threw inside
+    // setCurrentCity instead of showing a real error message.
     if (!geoResponse.ok) {
       failWithError(geoResponse.status === 401 ? t('errorInvalidApiKey') : t('errorCityCountryFailed', city, country));
       return;
@@ -772,7 +709,6 @@ async function fetchWeatherByCity(city, country, requestId = ++latestWeatherRequ
   }
 }
 
-// Show city selection when multiple matches exist
 function showCitySelection(cities) {
   const message = t('multipleCitiesFound');
 
@@ -789,9 +725,8 @@ function showCitySelection(cities) {
     </div>
   `;
 
-  // Closures over the original `cities` objects rather than round-tripping
-  // through data-* attributes — simpler, and avoids re-parsing values back
-  // out of HTML.
+  // Closes over the original `cities` objects instead of round-tripping
+  // through data-* attributes.
   document.querySelectorAll('.city-select-btn').forEach((btn, i) => {
     btn.addEventListener('click', () => {
       const city = cities[i];
@@ -804,7 +739,6 @@ function showCitySelection(cities) {
   });
 }
 
-// City Autocomplete
 input.addEventListener('input', debounce(async () => {
   const query = input.value.trim();
   if (query.length < 2) {
@@ -817,10 +751,9 @@ input.addEventListener('input', debounce(async () => {
 }, 300));
 
 input.addEventListener('blur', (event) => {
-  // Skip the close if focus is moving into the suggestions list itself
-  // (e.g. Tab from the input onto a keyboard-operable suggestion) — a
-  // plain unconditional timeout would hide the list out from under the
-  // item the user just tabbed onto, making it unreachable by keyboard.
+  // Skip closing if focus is moving into the suggestions list itself (e.g.
+  // Tab onto a suggestion) — otherwise it'd vanish out from under the item
+  // the user just tabbed onto.
   if (event.relatedTarget && suggestionsContainer.contains(event.relatedTarget)) return;
   setTimeout(() => {
     suggestionsContainer.classList.add('hidden');
@@ -828,10 +761,8 @@ input.addEventListener('blur', (event) => {
   }, 200);
 });
 
-// Closes the list once keyboard focus leaves it for anything other than
-// the input (which has its own blur handler above) — otherwise tabbing
-// off the last suggestion into the rest of the page would leave a stale
-// suggestions list open.
+// Closes the list once focus leaves it for anything but the input (which
+// has its own blur handler above).
 suggestionsContainer.addEventListener('focusout', (event) => {
   if (event.relatedTarget === input || suggestionsContainer.contains(event.relatedTarget)) return;
   suggestionsContainer.classList.add('hidden');
@@ -853,9 +784,8 @@ async function getCitySuggestions(query) {
       lon: city.lon,
       isRecent: recentCities.some(r => normalizeForMatch(r.name) === normalizeForMatch(city.name))
     }));
-    // sortCityResults ranks by name-match relevance/distance; a stable
-    // re-sort on top of that floats recent searches to the very top
-    // without disturbing their relative order otherwise.
+    // Stable re-sort floats recent searches to the top without disturbing
+    // sortCityResults' relevance/distance order otherwise.
     return sortCityResults(suggestions, query)
       .sort((a, b) => Number(b.isRecent) - Number(a.isRecent));
   } catch {
@@ -883,9 +813,6 @@ function renderSuggestions(suggestions) {
   suggestionsContainer.classList.remove('hidden');
   input.setAttribute('aria-expanded', 'true');
 
-  // Closures over the original `suggestions` objects rather than reading
-  // back from data-* attributes — simpler, and avoids re-parsing values
-  // back out of HTML.
   const chooseSuggestion = (i) => {
     const s = suggestions[i];
     input.value = s.name;
@@ -898,9 +825,8 @@ function renderSuggestions(suggestions) {
 
   suggestionsContainer.querySelectorAll('.suggestions__item').forEach((el, i) => {
     el.addEventListener('click', () => chooseSuggestion(i));
-    // role="option" divs aren't natively keyboard-operable like a real
-    // <select>/<button> — without this, Tab+Enter can't pick a suggestion
-    // at all, silently locking keyboard users out of autocomplete.
+    // role="option" divs aren't natively keyboard-operable, so without this
+    // Tab+Enter can't pick a suggestion at all.
     el.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
@@ -910,24 +836,19 @@ function renderSuggestions(suggestions) {
   });
 }
 
-// Recent Searches
-// Entries are full city records (not just names), which lets clicking a
-// chip reload weather directly by coordinates instead of re-geocoding.
+// Entries are full city records (not just names), so clicking a chip
+// reloads weather directly by coordinates instead of re-geocoding.
 function getRecentCities() {
   let raw;
   try {
     raw = JSON.parse(localStorage.getItem('recentCities'));
     if (!Array.isArray(raw)) raw = [];
   } catch {
-    // Corrupted/invalid JSON in localStorage (manual edits, an old
-    // incompatible schema, a partial write, etc.) must not throw here —
-    // this is called from renderRecentSearches() during DOMContentLoaded,
-    // so an uncaught error would silently break app init (popular cities
-    // and geolocation never get set up) with nothing shown to the user.
+    // Called during DOMContentLoaded — an uncaught error here would
+    // silently break app init, so corrupted JSON must not throw.
     raw = [];
   }
-  // Migrates any pre-existing plain-string entries (old schema) into the
-  // richer shape so old localStorage data doesn't break or get discarded.
+  // Migrates old plain-string entries into the richer shape.
   return raw.map(entry => typeof entry === 'string'
     ? { name: entry, country: '', state: '', lat: null, lon: null }
     : entry
@@ -968,8 +889,7 @@ function renderRecentSearches() {
         setCurrentCity(city);
         fetchWeatherByCoords(city.lat, city.lon);
       } else {
-        // Legacy entry saved before lat/lon were tracked — fall back to
-        // re-geocoding by name.
+        // Legacy entry saved before lat/lon were tracked.
         currentCity = city.name;
         fetchWeather(city.name);
       }
@@ -977,7 +897,6 @@ function renderRecentSearches() {
   });
 }
 
-// Popular Cities
 function renderPopularCities() {
   popularList.innerHTML = POPULAR_CITIES.map(city => `
     <span class="popular-item" data-city="${city.name}" data-country="${city.country}">${city.name}</span>
@@ -989,9 +908,7 @@ function renderPopularCities() {
       const country = el.dataset.country;
       input.value = city;
       currentCity = city;
-      // fetchWeatherByCity saves both the search history entry and the
-      // recent-search chip itself once it resolves the full city record —
-      // no separate save needed here.
+      // fetchWeatherByCity saves history/recent entries itself once resolved.
       fetchWeatherByCity(city, country);
     });
   });
@@ -1006,16 +923,12 @@ function getSearchHistory() {
     const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY));
     return Array.isArray(parsed) ? parsed : [];
   } catch {
-    // Corrupted/invalid JSON must not throw for callers (renderHistory,
-    // saveSearchHistory, deleteHistoryEntry) — treat it as empty history
-    // rather than crashing whichever of those triggered it.
+    // Treat corrupted JSON as empty history rather than throwing for callers.
     return [];
   }
 }
 
-// Logs a resolved city (from any search path: direct match, city-selection
-// picker, autocomplete, or popular-city click) with the time it was
-// searched. Capped at HISTORY_LIMIT so localStorage can't grow unbounded.
+// Capped at HISTORY_LIMIT so localStorage can't grow unbounded.
 function saveSearchHistory(cityData) {
   const history = getSearchHistory();
   history.unshift({
@@ -1092,9 +1005,8 @@ function renderHistory() {
   });
 }
 
-// Debounced like the city-suggestions input above: each keystroke would
-// otherwise re-read + JSON.parse the full (up to 200-entry) history from
-// localStorage and rebuild the entire list's innerHTML + listeners.
+// Debounced: each keystroke would otherwise re-parse up to 200 history
+// entries from localStorage and rebuild the whole list.
 historySearchInput.addEventListener('input', debounce(() => renderHistory(), 150));
 
 clearHistoryBtn.addEventListener('click', () => {
@@ -1104,19 +1016,14 @@ clearHistoryBtn.addEventListener('click', () => {
   renderHistory();
 });
 
-// Determines day vs. night in the city's own local time, using the
-// timezone offset (seconds from UTC) the weather API returns alongside the
-// current UTC timestamp `dt` — independent of the browser's local time.
+// Uses the API's own timezone offset, independent of the browser's local time.
 function isDaytimeAt(data) {
   const localHour = new Date((data.dt + data.timezone) * 1000).getUTCHours();
   return localHour >= 6 && localHour < 20;
 }
 
-// Builds "City, State, Country" (state omitted when the geocoding result
-// didn't have one, e.g. most cities outside the US/CA/etc.). City/state/
-// country names are always shown as the API returns them — only UI
-// labels and weather condition text go through translation, never
-// place names, so "Manila" stays "Manila" in every language.
+// Place names are always shown as the API returns them and never
+// translated — only UI labels and condition text are localized.
 function formatCityFullName(data) {
   const parts = [data.name];
   if (currentCityState) parts.push(currentCityState);
@@ -1124,9 +1031,7 @@ function formatCityFullName(data) {
   return parts.join(', ');
 }
 
-// Builds "Tuesday, July 7, 2026 | 2:30 PM" for the city's own local time
-// (timezone offset + current API timestamp, same trick as isDaytimeAt),
-// formatted in the current UI language.
+// Same local-time trick as isDaytimeAt, formatted in the current UI language.
 function formatCityDateTime(data) {
   const localDate = new Date((data.dt + data.timezone) * 1000);
   const locale = FORECAST_DAY_LOCALES[currentLanguage] || 'en-US';
@@ -1139,7 +1044,6 @@ function formatCityDateTime(data) {
   return `🕒 ${datePart} | ${timePart}`;
 }
 
-// Render Weather
 function renderWeather(data) {
   lastWeatherData = data;
   const dayNightIcon = isDaytimeAt(data) ? '☀️' : '🌙';
@@ -1171,11 +1075,9 @@ function renderWeather(data) {
 
 const ATMOSPHERE_CONDITIONS = ['Mist', 'Smoke', 'Haze', 'Dust', 'Fog', 'Sand', 'Ash', 'Squall', 'Tornado'];
 
-// Maps live weather data to a background theme key. Dramatic precipitation
-// or atmosphere conditions always win, since they already have their own
-// distinct look; a calm clear/cloudy sky falls back to night/hot/cold/
-// clear/clouds based on time of day (from the icon's day/night suffix)
-// and temperature (converted to Celsius regardless of the display unit).
+// Precipitation/atmosphere conditions always win; a calm sky falls back to
+// night/hot/cold/clear/clouds by time of day and temperature (in Celsius,
+// regardless of the display unit).
 function resolveWeatherTheme(data) {
   const main = data.weather[0].main;
   const isNight = data.weather[0].icon.endsWith('n');
@@ -1192,8 +1094,7 @@ function resolveWeatherTheme(data) {
   return main === 'Clear' ? 'clear' : 'clouds';
 }
 
-// Crossfades to the new theme by fading in the hidden background layer
-// and fading out the currently visible one.
+// Crossfades by fading in the hidden layer and fading out the visible one.
 function applyWeatherTheme(themeKey) {
   const incoming = activeBgLayer === 'a' ? bgLayerB : bgLayerA;
   const outgoing = activeBgLayer === 'a' ? bgLayerA : bgLayerB;
@@ -1216,10 +1117,8 @@ function clearWeatherEffects() {
 // Subtle floating particles for a few themes; other themes stay clean.
 function renderWeatherEffects(themeKey) {
   clearWeatherEffects();
-  // Built onto an off-DOM fragment and attached with a single appendChild
-  // instead of one insertion per particle (up to 70 for the night theme) —
-  // avoids forcing up to 70 separate style/layout recalcs on a live,
-  // animated, absolutely-positioned container.
+  // Built off-DOM and attached with one appendChild instead of one
+  // insertion per particle (up to 70 for the night theme).
   const fragment = document.createDocumentFragment();
 
   if (themeKey === 'snow') {
@@ -1295,7 +1194,6 @@ function renderWeatherEffects(themeKey) {
   weatherEffects.appendChild(fragment);
 }
 
-// Error Handling
 function showError(message) {
   errorMessage.textContent = message;
   errorMessage.classList.remove('hidden');
@@ -1307,34 +1205,24 @@ function hideError() {
   errorMessage.classList.add('hidden');
 }
 
-// Shows an error message and tears down the main loading indicator in one
-// step — every fetch path's failure branch (bad response, 401, network
-// error) needs both, so the spinner never gets stuck visible under an error.
+// Combines showError + loading teardown since every fetch failure needs both.
 function failWithError(message) {
   showError(message);
   loading.classList.add('hidden');
   setSearchPending(false);
 }
 
-// Sets currentCityData/currentCityState for a resolved city record (from
-// any search path: direct match, city-selection picker, autocomplete,
-// popular city, or history). Normalizes to the bare {lat, lon} shape since
-// that's what ends up there anyway once the weather fetch resolves (see the
-// currentCityState comment near the top of this file).
+// Normalizes to the bare {lat, lon} shape — see currentCityState above.
 function setCurrentCity(cityData) {
   currentCityData = { lat: cityData.lat, lon: cityData.lon };
   currentCityState = cityData.state || '';
 }
 
-// Records a resolved city search in both the full history log and the
-// capped "recent" chip list. Called from every path that resolves a
-// concrete city (direct match, city-selection picker, autocomplete).
 function recordCitySearch(cityData) {
   saveSearchHistory(cityData);
   saveRecentSearch(cityData);
 }
 
-// Utility: Debounce
 function debounce(func, wait) {
   let timeout;
   return function(...args) {
