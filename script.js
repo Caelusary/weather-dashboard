@@ -35,6 +35,7 @@ const forecastListEl = document.getElementById('forecast-list');
 const forecastLoading = document.getElementById('forecast-loading');
 
 const cityName = document.getElementById('city-name');
+const cityDatetime = document.getElementById('city-datetime');
 const condition = document.getElementById('condition');
 const temperature = document.getElementById('temperature');
 const humidity = document.getElementById('humidity');
@@ -321,7 +322,10 @@ function applyTranslations() {
 
   renderRecentSearches();
   if (!historyView.classList.contains('hidden')) renderHistory();
-  if (lastWeatherData) condition.textContent = translateCondition(lastWeatherData.weather[0].description);
+  if (lastWeatherData) {
+    condition.textContent = translateCondition(lastWeatherData.weather[0].description);
+    cityDatetime.textContent = formatCityDateTime(lastWeatherData);
+  }
   if (lastForecastData) renderForecast(lastForecastData);
 }
 
@@ -610,11 +614,17 @@ function getForecastIcon(entry) {
 // UTC getters back off it as if they were local fields.
 function groupForecastByDay(data) {
   const tzOffset = data.city.timezone;
+  // Today (in the city's local date), per the real current time rather
+  // than the forecast list's first entry — excluded below so the strip
+  // always shows the next 5 upcoming days, not today-plus-4.
+  const cityNow = new Date(Date.now() + tzOffset * 1000);
+  const todayKey = `${cityNow.getUTCFullYear()}-${cityNow.getUTCMonth()}-${cityNow.getUTCDate()}`;
   const days = new Map();
 
   data.list.forEach(entry => {
     const localDate = new Date((entry.dt + tzOffset) * 1000);
     const key = `${localDate.getUTCFullYear()}-${localDate.getUTCMonth()}-${localDate.getUTCDate()}`;
+    if (key === todayKey) return;
 
     if (!days.has(key)) days.set(key, { date: localDate, entries: [] });
     days.get(key).entries.push({ ...entry, localHour: localDate.getUTCHours() });
@@ -966,7 +976,10 @@ function isDaytimeAt(data) {
 }
 
 // Builds "City, State, Country" (state omitted when the geocoding result
-// didn't have one, e.g. most cities outside the US/CA/etc.).
+// didn't have one, e.g. most cities outside the US/CA/etc.). City/state/
+// country names are always shown as the API returns them — only UI
+// labels and weather condition text go through translation, never
+// place names, so "Manila" stays "Manila" in every language.
 function formatCityFullName(data) {
   const parts = [data.name];
   if (currentCityState) parts.push(currentCityState);
@@ -974,11 +987,27 @@ function formatCityFullName(data) {
   return parts.join(', ');
 }
 
+// Builds "Tuesday, July 7, 2026 | 2:30 PM" for the city's own local time
+// (timezone offset + current API timestamp, same trick as isDaytimeAt),
+// formatted in the current UI language.
+function formatCityDateTime(data) {
+  const localDate = new Date((data.dt + data.timezone) * 1000);
+  const locale = FORECAST_DAY_LOCALES[currentLanguage] || 'en-US';
+  const datePart = localDate.toLocaleDateString(locale, {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC'
+  });
+  const timePart = localDate.toLocaleTimeString(locale, {
+    hour: 'numeric', minute: '2-digit', timeZone: 'UTC'
+  });
+  return `🕒 ${datePart} | ${timePart}`;
+}
+
 // Render Weather
 function renderWeather(data) {
   lastWeatherData = data;
   const dayNightIcon = isDaytimeAt(data) ? '☀️' : '🌙';
   cityName.textContent = `${dayNightIcon} ${formatCityFullName(data)}`;
+  cityDatetime.textContent = formatCityDateTime(data);
   condition.textContent = translateCondition(data.weather[0].description);
 
   const temp = Math.round(data.main.temp);
