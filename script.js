@@ -1,5 +1,6 @@
 // API_KEY comes from config.js (gitignored) — see config.example.js for setup.
 const API_URL = 'https://api.openweathermap.org/data/2.5/weather';
+const FORECAST_URL = 'https://api.openweathermap.org/data/2.5/forecast';
 const GEO_URL = 'https://api.openweathermap.org/geo/1.0/direct';
 
 // DOM Elements
@@ -28,6 +29,10 @@ const recentLabelEl = document.getElementById('recent-label');
 const humidityLabelEl = document.getElementById('humidity-label');
 const feelsLikeLabelEl = document.getElementById('feels-like-label');
 const popularCitiesTitleEl = document.getElementById('popular-cities-title');
+const forecastSection = document.getElementById('forecast');
+const forecastTitleEl = document.getElementById('forecast-title');
+const forecastListEl = document.getElementById('forecast-list');
+const forecastLoading = document.getElementById('forecast-loading');
 
 const cityName = document.getElementById('city-name');
 const condition = document.getElementById('condition');
@@ -55,6 +60,9 @@ let currentLanguage = localStorage.getItem('language') || 'en';
 // Last successfully rendered weather payload, kept only so a language
 // change can retranslate the condition text without an extra API call.
 let lastWeatherData = null;
+// Same idea for the 5-day forecast, so a language change can re-render
+// day names/conditions without re-fetching.
+let lastForecastData = null;
 
 // Popular cities (pre-populated with specific locations)
 const POPULAR_CITIES = [
@@ -82,6 +90,8 @@ const TRANSLATIONS = {
     humidityLabel: '💧 Humidity',
     feelsLikeLabel: '🌡️ Feels Like',
     popularCitiesTitle: '🌍 Popular Cities',
+    forecastTitle: '📅 5-Day Forecast',
+    forecastLoading: 'Loading forecast...',
     loading: 'Loading...',
     historySearchPlaceholder: 'Filter history by city...',
     clearAllHistory: '🗑️ Clear All',
@@ -113,6 +123,8 @@ const TRANSLATIONS = {
     humidityLabel: '💧 Humedad',
     feelsLikeLabel: '🌡️ Sensación Térmica',
     popularCitiesTitle: '🌍 Ciudades Populares',
+    forecastTitle: '📅 Pronóstico de 5 Días',
+    forecastLoading: 'Cargando pronóstico...',
     loading: 'Cargando...',
     historySearchPlaceholder: 'Filtrar historial por ciudad...',
     clearAllHistory: '🗑️ Borrar Todo',
@@ -144,6 +156,8 @@ const TRANSLATIONS = {
     humidityLabel: '💧 湿度',
     feelsLikeLabel: '🌡️ 体感温度',
     popularCitiesTitle: '🌍 热门城市',
+    forecastTitle: '📅 5天预报',
+    forecastLoading: '正在加载预报...',
     loading: '加载中...',
     historySearchPlaceholder: '按城市筛选历史记录...',
     clearAllHistory: '🗑️ 清除全部',
@@ -175,6 +189,8 @@ const TRANSLATIONS = {
     humidityLabel: '💧 आर्द्रता',
     feelsLikeLabel: '🌡️ महसूस होता है',
     popularCitiesTitle: '🌍 लोकप्रिय शहर',
+    forecastTitle: '📅 5-दिन का पूर्वानुमान',
+    forecastLoading: 'पूर्वानुमान लोड हो रहा है...',
     loading: 'लोड हो रहा है...',
     historySearchPlaceholder: 'शहर के अनुसार इतिहास फ़िल्टर करें...',
     clearAllHistory: '🗑️ सभी हटाएं',
@@ -206,6 +222,8 @@ const TRANSLATIONS = {
     humidityLabel: '💧 الرطوبة',
     feelsLikeLabel: '🌡️ الإحساس الحراري',
     popularCitiesTitle: '🌍 المدن الشائعة',
+    forecastTitle: '📅 توقعات 5 أيام',
+    forecastLoading: 'جارٍ تحميل التوقعات...',
     loading: 'جارٍ التحميل...',
     historySearchPlaceholder: 'تصفية السجل حسب المدينة...',
     clearAllHistory: '🗑️ مسح الكل',
@@ -288,6 +306,8 @@ function applyTranslations() {
   humidityLabelEl.textContent = t('humidityLabel');
   feelsLikeLabelEl.textContent = t('feelsLikeLabel');
   popularCitiesTitleEl.textContent = t('popularCitiesTitle');
+  forecastTitleEl.textContent = t('forecastTitle');
+  forecastLoading.textContent = t('forecastLoading');
   loading.textContent = t('loading');
   historySearchInput.placeholder = t('historySearchPlaceholder');
   clearHistoryBtn.textContent = t('clearAllHistory');
@@ -298,6 +318,7 @@ function applyTranslations() {
   renderRecentSearches();
   if (!historyView.classList.contains('hidden')) renderHistory();
   if (lastWeatherData) condition.textContent = translateCondition(lastWeatherData.weather[0].description);
+  if (lastForecastData) renderForecast(lastForecastData);
 }
 
 languageSelect.addEventListener('change', () => {
@@ -504,6 +525,7 @@ async function fetchWeather(city) {
 async function fetchWeatherByCoords(lat, lon) {
   hideError();
   weatherCard.classList.add('hidden');
+  forecastSection.classList.add('hidden');
   loading.classList.remove('hidden');
 
   try {
@@ -523,10 +545,92 @@ async function fetchWeatherByCoords(lat, lon) {
     const data = await response.json();
     renderWeather(data);
     loading.classList.add('hidden');
+    // Fired without awaiting: the forecast has its own loading indicator
+    // and shouldn't hold up hiding the main "Loading..." state above.
+    fetchForecast(lat, lon);
   } catch {
     showError(t('errorWeatherGeneric'));
     loading.classList.add('hidden');
   }
+}
+
+// Fetch the 5-day/3-hour forecast and group it into daily high/low +
+// midday condition cards. Fails silently (just hides its own loading
+// state) since the forecast is a supplementary feature — a failure here
+// shouldn't block or overwrite the already-successful current-weather view.
+async function fetchForecast(lat, lon) {
+  forecastSection.classList.add('hidden');
+  forecastLoading.classList.remove('hidden');
+
+  try {
+    const url = `${FORECAST_URL}?lat=${lat}&lon=${lon}&units=${currentUnit}&appid=${API_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      forecastLoading.classList.add('hidden');
+      return;
+    }
+
+    const data = await response.json();
+    renderForecast(data);
+  } catch {
+    forecastLoading.classList.add('hidden');
+  }
+}
+
+// BCP-47 locale tags for formatting the forecast's weekday names in the
+// currently selected UI language.
+const FORECAST_DAY_LOCALES = { en: 'en-US', es: 'es-ES', zh: 'zh-CN', hi: 'hi-IN', ar: 'ar-SA' };
+
+// Groups the forecast's 3-hour entries into calendar days using the
+// city's own timezone offset (not the browser's), same trick as
+// isDaytimeAt: add the offset to the UTC timestamp, then read the
+// UTC getters back off it as if they were local fields.
+function groupForecastByDay(data) {
+  const tzOffset = data.city.timezone;
+  const days = new Map();
+
+  data.list.forEach(entry => {
+    const localDate = new Date((entry.dt + tzOffset) * 1000);
+    const key = `${localDate.getUTCFullYear()}-${localDate.getUTCMonth()}-${localDate.getUTCDate()}`;
+
+    if (!days.has(key)) days.set(key, { date: localDate, entries: [] });
+    days.get(key).entries.push({ ...entry, localHour: localDate.getUTCHours() });
+  });
+
+  return [...days.values()].slice(0, 5);
+}
+
+function renderForecast(data) {
+  lastForecastData = data;
+
+  const days = groupForecastByDay(data);
+  const unitSymbol = currentUnit === 'metric' ? '°C' : '°F';
+  const locale = FORECAST_DAY_LOCALES[currentLanguage] || 'en-US';
+
+  forecastListEl.innerHTML = days.map(day => {
+    const temps = day.entries.map(e => e.main.temp);
+    const high = Math.round(Math.max(...temps));
+    const low = Math.round(Math.min(...temps));
+    // Picks the entry closest to 13:00 local time as the day's
+    // representative icon/condition (most "typical" daytime reading).
+    const midday = day.entries.reduce((closest, entry) =>
+      Math.abs(entry.localHour - 13) < Math.abs(closest.localHour - 13) ? entry : closest
+    );
+    const dayName = day.date.toLocaleDateString(locale, { weekday: 'short', timeZone: 'UTC' });
+    const description = translateCondition(midday.weather[0].description);
+
+    return `
+      <div class="forecast__card">
+        <span class="forecast__day">${dayName}</span>
+        <img class="forecast__icon" src="https://openweathermap.org/img/wn/${midday.weather[0].icon}@2x.png" alt="${description}" />
+        <span class="forecast__condition">${description}</span>
+        <span class="forecast__temps"><span class="forecast__high">${high}${unitSymbol}</span> / <span class="forecast__low">${low}${unitSymbol}</span></span>
+      </div>
+    `;
+  }).join('');
+
+  forecastLoading.classList.add('hidden');
+  forecastSection.classList.remove('hidden');
 }
 
 // Fetch weather by city + country
