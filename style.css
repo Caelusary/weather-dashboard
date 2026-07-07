@@ -195,14 +195,12 @@ body {
 }
 
 /* ===== HEADER ===== */
-/* A fixed-size .header__controls group anchored right, and a title that
-   takes the rest of the row, anchored left — this is what keeps the header
-   identical in every language: the title's translated length varies a lot
-   (e.g. "Weather Dashboard" vs "天气仪表盘"), but the box geometry of every
-   element never does. The title is never truncated — its font-size is
-   tuned to fit this app's fixed 480px width alongside the fixed-width
-   controls without an ellipsis; it can still wrap to a 2nd line rather
-   than being cut off in any edge case (e.g. unusual browser font zoom). */
+/* A fixed-size .header__controls group anchored right, and a 2-line
+   stacked title anchored left — this is what keeps the header the same
+   height in every language: rather than one line whose wrap point shifts
+   unpredictably per language (some fit on one line, others don't, making
+   the header taller/shorter depending on language), the title always
+   renders as exactly two lines, each translated as its own short phrase. */
 .app__header {
   display: flex;
   flex-wrap: nowrap;
@@ -216,10 +214,16 @@ body {
   flex: 1 1 auto;
   min-width: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
   color: #fff;
-  font-size: 1rem;
-  line-height: 1.25;
+  font-size: 1.75rem;
+  line-height: 1.2;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.app__title-line {
+  display: block;
 }
 
 .header__controls {
@@ -792,12 +796,6 @@ body {
     align-items: flex-start;
     gap: 0.85rem;
     margin-bottom: 1.5rem;
-  }
-
-  /* Stacked layout gives the title its own full-width row, so there's no
-     space pressure here — restore the larger, more prominent size. */
-  .app__title {
-    font-size: 1.5rem;
   }
 
   .header__controls {

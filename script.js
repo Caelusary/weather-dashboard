@@ -23,7 +23,8 @@ const clearHistoryBtn = document.getElementById('clear-history-btn');
 const historyListEl = document.getElementById('history-list');
 
 const languageSelect = document.getElementById('language-select');
-const appTitleEl = document.getElementById('app-title');
+const appTitleLine1El = document.getElementById('app-title-line1');
+const appTitleLine2El = document.getElementById('app-title-line2');
 const searchButtonEl = document.getElementById('search-button');
 const recentLabelEl = document.getElementById('recent-label');
 const humidityLabelEl = document.getElementById('humidity-label');
@@ -81,7 +82,8 @@ const POPULAR_CITIES = [
 // interpolation (e.g. a city name) are functions instead of plain strings.
 const TRANSLATIONS = {
   en: {
-    appTitle: '🌤️ Weather Dashboard',
+    appTitleLine1: '🌤️ Weather',
+    appTitleLine2: 'Dashboard',
     tabWeather: '🌤️ Weather',
     tabHistory: '📜 History',
     searchPlaceholder: 'Enter a city name...',
@@ -114,7 +116,8 @@ const TRANSLATIONS = {
     errorCityCountryFailed: (city, country) => `Could not find city "${city}, ${country}".`
   },
   es: {
-    appTitle: '🌤️ Panel del Clima',
+    appTitleLine1: '🌤️ Panel del',
+    appTitleLine2: 'Clima',
     tabWeather: '🌤️ Clima',
     tabHistory: '📜 Historial',
     searchPlaceholder: 'Introduce el nombre de una ciudad...',
@@ -147,7 +150,8 @@ const TRANSLATIONS = {
     errorCityCountryFailed: (city, country) => `No se pudo encontrar la ciudad "${city}, ${country}".`
   },
   zh: {
-    appTitle: '🌤️ 天气仪表盘',
+    appTitleLine1: '🌤️ 天气',
+    appTitleLine2: '仪表盘',
     tabWeather: '🌤️ 天气',
     tabHistory: '📜 历史记录',
     searchPlaceholder: '输入城市名称...',
@@ -180,7 +184,8 @@ const TRANSLATIONS = {
     errorCityCountryFailed: (city, country) => `无法找到城市"${city}, ${country}"。`
   },
   hi: {
-    appTitle: '🌤️ मौसम डैशबोर्ड',
+    appTitleLine1: '🌤️ मौसम',
+    appTitleLine2: 'डैशबोर्ड',
     tabWeather: '🌤️ मौसम',
     tabHistory: '📜 इतिहास',
     searchPlaceholder: 'शहर का नाम दर्ज करें...',
@@ -213,7 +218,8 @@ const TRANSLATIONS = {
     errorCityCountryFailed: (city, country) => `शहर "${city}, ${country}" नहीं मिल सका।`
   },
   ar: {
-    appTitle: '🌤️ لوحة الطقس',
+    appTitleLine1: '🌤️ لوحة',
+    appTitleLine2: 'الطقس',
     tabWeather: '🌤️ الطقس',
     tabHistory: '📜 السجل',
     searchPlaceholder: 'أدخل اسم المدينة...',
@@ -302,7 +308,8 @@ function applyTranslations() {
   // iconography/controls to actually support an RTL layout).
   languageSelect.value = currentLanguage;
 
-  appTitleEl.textContent = t('appTitle');
+  appTitleLine1El.textContent = t('appTitleLine1');
+  appTitleLine2El.textContent = t('appTitleLine2');
   tabWeatherBtn.textContent = t('tabWeather');
   tabHistoryBtn.textContent = t('tabHistory');
   input.placeholder = t('searchPlaceholder');
