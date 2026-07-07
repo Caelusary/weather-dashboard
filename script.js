@@ -56,6 +56,11 @@ let currentCityData = null;
 // overwrites currentCityData with the weather API's bare {lat, lon} once
 // the coords fetch resolves, which would otherwise drop this.
 let currentCityState = '';
+// OpenWeatherMap's per-language name translations for the currently
+// displayed city (its geocoding response's local_names field), tracked
+// alongside currentCityState for the same reason: the plain weather-API
+// response (used to refresh on unit toggle) doesn't carry this field.
+let currentCityLocalNames = {};
 let userCoords = null;
 let activeBgLayer = 'a';
 let currentLanguage = localStorage.getItem('language') || 'en';
@@ -77,6 +82,20 @@ const POPULAR_CITIES = [
   { name: 'Singapore', country: 'SG' },
   { name: 'Mumbai', country: 'IN' }
 ];
+
+// POPULAR_CITIES is a static list (not fetched from geocoding), so it has
+// no local_names of its own — this small hand-maintained table fills that
+// gap for the same localizedCityName() lookup used everywhere else.
+const POPULAR_CITY_LOCAL_NAMES = {
+  'London': { es: 'Londres', zh: '伦敦', hi: 'लंदन', ar: 'لندن' },
+  'New York': { es: 'Nueva York', zh: '纽约', hi: 'न्यूयॉर्क', ar: 'نيويورك' },
+  'Tokyo': { es: 'Tokio', zh: '东京', hi: 'टोक्यो', ar: 'طوكيو' },
+  'Paris': { es: 'París', zh: '巴黎', hi: 'पेरिस', ar: 'باريس' },
+  'Sydney': { es: 'Sídney', zh: '悉尼', hi: 'सिडनी', ar: 'سيدني' },
+  'Dubai': { es: 'Dubái', zh: '迪拜', hi: 'दुबई', ar: 'دبي' },
+  'Singapore': { es: 'Singapur', zh: '新加坡', hi: 'सिंगापुर', ar: 'سنغافورة' },
+  'Mumbai': { es: 'Bombay', zh: '孟买', hi: 'मुंबई', ar: 'مومباي' }
+};
 
 // Translations for the 5 most-spoken languages. Values that need
 // interpolation (e.g. a city name) are functions instead of plain strings.
@@ -328,8 +347,11 @@ function applyTranslations() {
   languageSelect.title = t('languageLabel');
 
   renderRecentSearches();
+  renderPopularCities();
   if (!historyView.classList.contains('hidden')) renderHistory();
   if (lastWeatherData) {
+    const dayNightIcon = isDaytimeAt(lastWeatherData) ? '☀️' : '🌙';
+    cityName.textContent = `${dayNightIcon} ${formatCityFullName(lastWeatherData)}`;
     condition.textContent = translateCondition(lastWeatherData.weather[0].description);
     cityDatetime.textContent = formatCityDateTime(lastWeatherData);
   }
@@ -524,6 +546,7 @@ async function fetchWeather(city) {
       const cityData = cities[0];
       currentCityData = cityData;
       currentCityState = cityData.state || '';
+      currentCityLocalNames = cityData.local_names || {};
       saveSearchHistory(cityData);
       saveRecentSearch(cityData);
       await fetchWeatherByCoords(cityData.lat, cityData.lon);
@@ -695,6 +718,7 @@ async function fetchWeatherByCity(city, country) {
     const cityData = cities[0];
     currentCityData = cityData;
     currentCityState = cityData.state || '';
+    currentCityLocalNames = cityData.local_names || {};
     saveSearchHistory(cityData);
     saveRecentSearch(cityData);
     await fetchWeatherByCoords(cityData.lat, cityData.lon);
@@ -730,7 +754,7 @@ function showCitySelection(cities) {
           onmouseover="this.style.background='rgba(255,255,255,0.35)'"
           onmouseout="this.style.background='rgba(255,255,255,0.2)'"
         >
-          ${city.name}${city.state ? `, ${city.state}` : ''} (${city.country})
+          ${localizedCityName(city)}${city.state ? `, ${city.state}` : ''} (${city.country})
         </button>
       `).join('')}
     </div>
@@ -744,6 +768,7 @@ function showCitySelection(cities) {
       const city = cities[i];
       currentCityData = { lat: city.lat, lon: city.lon };
       currentCityState = city.state || '';
+      currentCityLocalNames = city.local_names || {};
       input.value = city.name;
       saveSearchHistory(city);
       saveRecentSearch(city);
@@ -782,8 +807,7 @@ async function getCitySuggestions(query) {
       lat: city.lat,
       lon: city.lon,
       localNames: city.local_names || {},
-      isRecent: recentCities.some(r => normalizeForMatch(r.name) === normalizeForMatch(city.name)),
-      display: city.state ? `${city.name}, ${city.state}, ${city.country}` : `${city.name}, ${city.country}`
+      isRecent: recentCities.some(r => normalizeForMatch(r.name) === normalizeForMatch(city.name))
     }));
     // sortCityResults ranks by name-match relevance/distance; a stable
     // re-sort on top of that floats recent searches to the very top
@@ -801,11 +825,15 @@ function renderSuggestions(suggestions) {
     return;
   }
 
-  suggestionsContainer.innerHTML = suggestions.map(s => `
-    <div class="suggestions__item">
-      ${s.display}${s.isRecent ? '<span style="margin-left: 0.5rem; font-size: 0.75rem; opacity: 0.65;">🕒 Recent</span>' : ''}
-    </div>
-  `).join('');
+  suggestionsContainer.innerHTML = suggestions.map(s => {
+    const localName = localizedCityName(s);
+    const display = s.state ? `${localName}, ${s.state}, ${s.country}` : `${localName}, ${s.country}`;
+    return `
+      <div class="suggestions__item">
+        ${display}${s.isRecent ? '<span style="margin-left: 0.5rem; font-size: 0.75rem; opacity: 0.65;">🕒 Recent</span>' : ''}
+      </div>
+    `;
+  }).join('');
 
   suggestionsContainer.classList.remove('hidden');
 
@@ -818,6 +846,7 @@ function renderSuggestions(suggestions) {
       input.value = s.name;
       currentCityData = { lat: s.lat, lon: s.lon };
       currentCityState = s.state || '';
+      currentCityLocalNames = s.localNames || {};
       saveSearchHistory(s);
       saveRecentSearch(s);
       fetchWeatherByCoords(s.lat, s.lon);
@@ -840,13 +869,13 @@ function getRecentCities() {
   );
 }
 
-// Displays a recent-search chip in the current UI language when
-// OpenWeatherMap has a translation for it, falling back to the name as
-// returned by the API otherwise (most cities only have a handful of
-// languages covered). This is intentionally scoped to just the recent
-// chips — the main weather card, history log, and search suggestions all
-// keep the canonical spelling, per the original "don't translate city
-// names" requirement.
+// Shows a city name in the current UI language when a translation is
+// available — OpenWeatherMap's local_names for geocoded cities, or the
+// small hand-maintained POPULAR_CITY_LOCAL_NAMES table for the static
+// popular-cities list — falling back to the name as returned by the API
+// otherwise (most cities only have a handful of languages covered). Used
+// everywhere a city name is displayed: the weather card, history,
+// suggestions, city-selection, popular cities, and recent searches.
 function localizedCityName(cityData) {
   const localNames = cityData.localNames || cityData.local_names || {};
   return localNames[currentLanguage] || cityData.name;
@@ -886,6 +915,7 @@ function renderRecentSearches() {
       if (city.lat != null && city.lon != null) {
         currentCityData = { lat: city.lat, lon: city.lon };
         currentCityState = city.state || '';
+        currentCityLocalNames = city.localNames || {};
         fetchWeatherByCoords(city.lat, city.lon);
       } else {
         // Legacy entry saved before lat/lon were tracked — fall back to
@@ -900,7 +930,9 @@ function renderRecentSearches() {
 // Popular Cities
 function renderPopularCities() {
   popularList.innerHTML = POPULAR_CITIES.map(city => `
-    <span class="popular-item" data-city="${city.name}" data-country="${city.country}">${city.name}</span>
+    <span class="popular-item" data-city="${city.name}" data-country="${city.country}">${
+      localizedCityName({ name: city.name, localNames: POPULAR_CITY_LOCAL_NAMES[city.name] })
+    }</span>
   `).join('');
 
   popularList.querySelectorAll('.popular-item').forEach(el => {
@@ -936,6 +968,7 @@ function saveSearchHistory(cityData) {
     state: cityData.state || '',
     lat: cityData.lat,
     lon: cityData.lon,
+    localNames: cityData.localNames || cityData.local_names || {},
     timestamp: Date.now()
   });
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, HISTORY_LIMIT)));
@@ -953,7 +986,7 @@ function formatHistoryTimestamp(timestamp) {
 }
 
 function historyEntryLabel(entry) {
-  const parts = [entry.name];
+  const parts = [localizedCityName(entry)];
   if (entry.state) parts.push(entry.state);
   parts.push(entry.country);
   return parts.join(', ');
@@ -962,8 +995,13 @@ function historyEntryLabel(entry) {
 function renderHistory() {
   const fullHistory = getSearchHistory();
   const filter = normalizeForMatch(historySearchInput.value);
+  // Matches against both the localized label and the canonical name, so
+  // filtering still works whichever spelling the user types.
   const history = filter
-    ? fullHistory.filter(entry => normalizeForMatch(historyEntryLabel(entry)).includes(filter))
+    ? fullHistory.filter(entry =>
+        normalizeForMatch(historyEntryLabel(entry)).includes(filter) ||
+        normalizeForMatch(entry.name).includes(filter)
+      )
     : fullHistory;
 
   if (history.length === 0) {
@@ -994,6 +1032,7 @@ function renderHistory() {
       input.value = historyEntryLabel(entry);
       currentCityData = { lat: entry.lat, lon: entry.lon };
       currentCityState = entry.state || '';
+      currentCityLocalNames = entry.localNames || {};
       switchView('weather');
       fetchWeatherByCoords(entry.lat, entry.lon);
     });
@@ -1023,12 +1062,13 @@ function isDaytimeAt(data) {
 }
 
 // Builds "City, State, Country" (state omitted when the geocoding result
-// didn't have one, e.g. most cities outside the US/CA/etc.). City/state/
-// country names are always shown as the API returns them — only UI
-// labels and weather condition text go through translation, never
-// place names, so "Manila" stays "Manila" in every language.
+// didn't have one, e.g. most cities outside the US/CA/etc.). The city name
+// is localized via currentCityLocalNames (OpenWeatherMap's local_names
+// from the geocoding step, since the plain weather-API response used here
+// doesn't carry it) — state and country stay as the API returns them,
+// since there's no equivalent translation data available for those.
 function formatCityFullName(data) {
-  const parts = [data.name];
+  const parts = [localizedCityName({ name: data.name, localNames: currentCityLocalNames })];
   if (currentCityState) parts.push(currentCityState);
   parts.push(data.sys.country);
   return parts.join(', ');
