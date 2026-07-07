@@ -28,6 +28,11 @@ const weatherEffects = document.getElementById('weather-effects');
 let currentUnit = localStorage.getItem('unit') || 'metric';
 let currentCity = '';
 let currentCityData = null;
+// State/province of the currently displayed city, if the geocoding result
+// had one. Tracked separately from currentCityData because renderWeather
+// overwrites currentCityData with the weather API's bare {lat, lon} once
+// the coords fetch resolves, which would otherwise drop this.
+let currentCityState = '';
 let userCoords = null;
 let activeBgLayer = 'a';
 
@@ -211,6 +216,7 @@ async function fetchWeather(city) {
     if (cities.length === 1) {
       const cityData = cities[0];
       currentCityData = cityData;
+      currentCityState = cityData.state || '';
       await fetchWeatherByCoords(cityData.lat, cityData.lon);
     } else {
       loading.classList.add('hidden');
@@ -270,6 +276,7 @@ async function fetchWeatherByCity(city, country) {
 
     const cityData = cities[0];
     currentCityData = cityData;
+    currentCityState = cityData.state || '';
     await fetchWeatherByCoords(cityData.lat, cityData.lon);
   } catch {
     showError(`Could not find city "${city}, ${country}".`);
@@ -287,10 +294,11 @@ function showCitySelection(cities) {
     <div style="margin-bottom: 0.5rem;">${message}</div>
     <div style="display: flex; flex-direction: column; gap: 0.25rem;">
       ${cities.map((city) => `
-        <button 
-          class="city-select-btn" 
-          data-lat="${city.lat}" 
+        <button
+          class="city-select-btn"
+          data-lat="${city.lat}"
           data-lon="${city.lon}"
+          data-state="${city.state || ''}"
           style="
             background: rgba(255,255,255,0.2);
             border: 1px solid rgba(255,255,255,0.3);
@@ -316,6 +324,7 @@ function showCitySelection(cities) {
       const lat = parseFloat(btn.dataset.lat);
       const lon = parseFloat(btn.dataset.lon);
       currentCityData = { lat, lon };
+      currentCityState = btn.dataset.state || '';
       input.value = btn.textContent.split('(')[0].trim();
       fetchWeatherByCoords(lat, lon);
       errorMessage.classList.add('hidden');
@@ -365,7 +374,7 @@ function renderSuggestions(suggestions) {
   }
 
   suggestionsContainer.innerHTML = suggestions.map(s => `
-    <div class="suggestions__item" data-lat="${s.lat}" data-lon="${s.lon}" data-name="${s.name}">
+    <div class="suggestions__item" data-lat="${s.lat}" data-lon="${s.lon}" data-name="${s.name}" data-state="${s.state || ''}">
       ${s.display}
     </div>
   `).join('');
@@ -379,6 +388,7 @@ function renderSuggestions(suggestions) {
       const name = el.dataset.name;
       input.value = name;
       currentCityData = { lat, lon };
+      currentCityState = el.dataset.state || '';
       fetchWeatherByCoords(lat, lon);
       saveRecentSearch(name);
       suggestionsContainer.classList.add('hidden');
@@ -443,10 +453,19 @@ function isDaytimeAt(data) {
   return localHour >= 6 && localHour < 20;
 }
 
+// Builds "City, State, Country" (state omitted when the geocoding result
+// didn't have one, e.g. most cities outside the US/CA/etc.).
+function formatCityFullName(data) {
+  const parts = [data.name];
+  if (currentCityState) parts.push(currentCityState);
+  parts.push(data.sys.country);
+  return parts.join(', ');
+}
+
 // Render Weather
 function renderWeather(data) {
   const dayNightIcon = isDaytimeAt(data) ? '☀️' : '🌙';
-  cityName.textContent = `${dayNightIcon} ${data.name}, ${data.sys.country}`;
+  cityName.textContent = `${dayNightIcon} ${formatCityFullName(data)}`;
   condition.textContent = data.weather[0].description;
 
   const temp = Math.round(data.main.temp);
