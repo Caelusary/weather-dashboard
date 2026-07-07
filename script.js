@@ -8,6 +8,8 @@ const input = document.getElementById('city-input');
 const suggestionsContainer = document.getElementById('suggestions');
 const errorMessage = document.getElementById('error-message');
 const weatherCard = document.getElementById('weather-card');
+const weatherSuggestion = document.getElementById('weather-suggestion');
+const suggestionText = document.getElementById('suggestion-text');
 const loading = document.getElementById('loading');
 const unitToggle = document.getElementById('unit-toggle');
 const recentList = document.getElementById('recent-list');
@@ -81,126 +83,7 @@ const POPULAR_CITIES = [
   { name: 'Singapore', country: 'SG', lat: 1.3521, lon: 103.8198 },
   { name: 'Mumbai', country: 'IN', lat: 19.0760, lon: 72.8777 },
   { name: 'Los Angeles', country: 'US', lat: 34.0522, lon: -118.2437 },
-  { name: 'Berlin', country: 'DE', lat: 52.5200, lon: 13.4050 },
-
-  // Beyond this point: a much larger set of major world cities, added so
-  // the Explore Weather map shows broad global coverage. Only the first
-  // POPULAR_CHIP_LIMIT entries above render as "Popular Cities" chips —
-  // renderPopularCities() slices the array, but the map (getMapCities())
-  // uses the whole thing.
-  { name: 'Toronto', country: 'CA', lat: 43.6532, lon: -79.3832 },
-  { name: 'Chicago', country: 'US', lat: 41.8781, lon: -87.6298 },
-  { name: 'Mexico City', country: 'MX', lat: 19.4326, lon: -99.1332 },
-  { name: 'Vancouver', country: 'CA', lat: 49.2827, lon: -123.1207 },
-  { name: 'Miami', country: 'US', lat: 25.7617, lon: -80.1918 },
-  { name: 'San Francisco', country: 'US', lat: 37.7749, lon: -122.4194 },
-  { name: 'Houston', country: 'US', lat: 29.7604, lon: -95.3698 },
-  { name: 'Montreal', country: 'CA', lat: 45.5019, lon: -73.5674 },
-  { name: 'Boston', country: 'US', lat: 42.3601, lon: -71.0589 },
-  { name: 'Seattle', country: 'US', lat: 47.6062, lon: -122.3321 },
-
-  { name: 'Sao Paulo', country: 'BR', lat: -23.5505, lon: -46.6333 },
-  { name: 'Rio de Janeiro', country: 'BR', lat: -22.9068, lon: -43.1729 },
-  { name: 'Buenos Aires', country: 'AR', lat: -34.6037, lon: -58.3816 },
-  { name: 'Lima', country: 'PE', lat: -12.0464, lon: -77.0428 },
-  { name: 'Bogota', country: 'CO', lat: 4.7110, lon: -74.0721 },
-  { name: 'Santiago', country: 'CL', lat: -33.4489, lon: -70.6693 },
-  { name: 'Caracas', country: 'VE', lat: 10.4806, lon: -66.9036 },
-  { name: 'Quito', country: 'EC', lat: -0.1807, lon: -78.4678 },
-  { name: 'Montevideo', country: 'UY', lat: -34.9011, lon: -56.1645 },
-  { name: 'La Paz', country: 'BO', lat: -16.5000, lon: -68.1500 },
-
-  { name: 'Madrid', country: 'ES', lat: 40.4168, lon: -3.7038 },
-  { name: 'Rome', country: 'IT', lat: 41.9028, lon: 12.4964 },
-  { name: 'Amsterdam', country: 'NL', lat: 52.3676, lon: 4.9041 },
-  { name: 'Vienna', country: 'AT', lat: 48.2082, lon: 16.3738 },
-  { name: 'Barcelona', country: 'ES', lat: 41.3851, lon: 2.1734 },
-  { name: 'Moscow', country: 'RU', lat: 55.7558, lon: 37.6173 },
-  { name: 'Istanbul', country: 'TR', lat: 41.0082, lon: 28.9784 },
-  { name: 'Athens', country: 'GR', lat: 37.9838, lon: 23.7275 },
-  { name: 'Warsaw', country: 'PL', lat: 52.2297, lon: 21.0122 },
-  { name: 'Prague', country: 'CZ', lat: 50.0755, lon: 14.4378 },
-  { name: 'Lisbon', country: 'PT', lat: 38.7223, lon: -9.1393 },
-  { name: 'Dublin', country: 'IE', lat: 53.3498, lon: -6.2603 },
-  { name: 'Stockholm', country: 'SE', lat: 59.3293, lon: 18.0686 },
-  { name: 'Oslo', country: 'NO', lat: 59.9139, lon: 10.7522 },
-  { name: 'Copenhagen', country: 'DK', lat: 55.6761, lon: 12.5683 },
-  { name: 'Helsinki', country: 'FI', lat: 60.1699, lon: 24.9384 },
-  { name: 'Brussels', country: 'BE', lat: 50.8503, lon: 4.3517 },
-  { name: 'Zurich', country: 'CH', lat: 47.3769, lon: 8.5417 },
-  { name: 'Budapest', country: 'HU', lat: 47.4979, lon: 19.0402 },
-  { name: 'Bucharest', country: 'RO', lat: 44.4268, lon: 26.1025 },
-  { name: 'Kyiv', country: 'UA', lat: 50.4501, lon: 30.5234 },
-  { name: 'Milan', country: 'IT', lat: 45.4642, lon: 9.1900 },
-  { name: 'Munich', country: 'DE', lat: 48.1351, lon: 11.5820 },
-  { name: 'Hamburg', country: 'DE', lat: 53.5511, lon: 9.9937 },
-  { name: 'Edinburgh', country: 'GB', lat: 55.9533, lon: -3.1883 },
-  { name: 'Manchester', country: 'GB', lat: 53.4808, lon: -2.2426 },
-
-  { name: 'Riyadh', country: 'SA', lat: 24.7136, lon: 46.6753 },
-  { name: 'Doha', country: 'QA', lat: 25.2854, lon: 51.5310 },
-  { name: 'Abu Dhabi', country: 'AE', lat: 24.4539, lon: 54.3773 },
-  { name: 'Tel Aviv', country: 'IL', lat: 32.0853, lon: 34.7818 },
-  { name: 'Amman', country: 'JO', lat: 31.9454, lon: 35.9284 },
-  { name: 'Beirut', country: 'LB', lat: 33.8938, lon: 35.5018 },
-  { name: 'Baghdad', country: 'IQ', lat: 33.3152, lon: 44.3661 },
-  { name: 'Tehran', country: 'IR', lat: 35.6892, lon: 51.3890 },
-  { name: 'Kuwait City', country: 'KW', lat: 29.3759, lon: 47.9774 },
-  { name: 'Muscat', country: 'OM', lat: 23.5880, lon: 58.3829 },
-
-  { name: 'Cairo', country: 'EG', lat: 30.0444, lon: 31.2357 },
-  { name: 'Lagos', country: 'NG', lat: 6.5244, lon: 3.3792 },
-  { name: 'Nairobi', country: 'KE', lat: -1.2921, lon: 36.8219 },
-  { name: 'Johannesburg', country: 'ZA', lat: -26.2041, lon: 28.0473 },
-  { name: 'Cape Town', country: 'ZA', lat: -33.9249, lon: 18.4241 },
-  { name: 'Casablanca', country: 'MA', lat: 33.5731, lon: -7.5898 },
-  { name: 'Addis Ababa', country: 'ET', lat: 9.0300, lon: 38.7400 },
-  { name: 'Accra', country: 'GH', lat: 5.6037, lon: -0.1870 },
-  { name: 'Tunis', country: 'TN', lat: 36.8065, lon: 10.1815 },
-  { name: 'Algiers', country: 'DZ', lat: 36.7538, lon: 3.0588 },
-  { name: 'Kinshasa', country: 'CD', lat: -4.4419, lon: 15.2663 },
-  { name: 'Dakar', country: 'SN', lat: 14.7167, lon: -17.4677 },
-
-  { name: 'Delhi', country: 'IN', lat: 28.7041, lon: 77.1025 },
-  { name: 'Bangalore', country: 'IN', lat: 12.9716, lon: 77.5946 },
-  { name: 'Kolkata', country: 'IN', lat: 22.5726, lon: 88.3639 },
-  { name: 'Chennai', country: 'IN', lat: 13.0827, lon: 80.2707 },
-  { name: 'Karachi', country: 'PK', lat: 24.8607, lon: 67.0011 },
-  { name: 'Lahore', country: 'PK', lat: 31.5497, lon: 74.3436 },
-  { name: 'Dhaka', country: 'BD', lat: 23.8103, lon: 90.4125 },
-  { name: 'Colombo', country: 'LK', lat: 6.9271, lon: 79.8612 },
-  { name: 'Kathmandu', country: 'NP', lat: 27.7172, lon: 85.3240 },
-  { name: 'Islamabad', country: 'PK', lat: 33.6844, lon: 73.0479 },
-
-  { name: 'Beijing', country: 'CN', lat: 39.9042, lon: 116.4074 },
-  { name: 'Shanghai', country: 'CN', lat: 31.2304, lon: 121.4737 },
-  { name: 'Hong Kong', country: 'HK', lat: 22.3193, lon: 114.1694 },
-  { name: 'Seoul', country: 'KR', lat: 37.5665, lon: 126.9780 },
-  { name: 'Osaka', country: 'JP', lat: 34.6937, lon: 135.5023 },
-  { name: 'Taipei', country: 'TW', lat: 25.0330, lon: 121.5654 },
-  { name: 'Guangzhou', country: 'CN', lat: 23.1291, lon: 113.2644 },
-  { name: 'Shenzhen', country: 'CN', lat: 22.5431, lon: 114.0579 },
-  { name: 'Busan', country: 'KR', lat: 35.1796, lon: 129.0756 },
-  { name: 'Ulaanbaatar', country: 'MN', lat: 47.8864, lon: 106.9057 },
-
-  { name: 'Bangkok', country: 'TH', lat: 13.7563, lon: 100.5018 },
-  { name: 'Jakarta', country: 'ID', lat: -6.2088, lon: 106.8456 },
-  { name: 'Manila', country: 'PH', lat: 14.5995, lon: 120.9842 },
-  { name: 'Kuala Lumpur', country: 'MY', lat: 3.1390, lon: 101.6869 },
-  { name: 'Ho Chi Minh City', country: 'VN', lat: 10.8231, lon: 106.6297 },
-  { name: 'Hanoi', country: 'VN', lat: 21.0278, lon: 105.8342 },
-  { name: 'Phnom Penh', country: 'KH', lat: 11.5564, lon: 104.9282 },
-  { name: 'Yangon', country: 'MM', lat: 16.8409, lon: 96.1735 },
-  { name: 'Bandar Seri Begawan', country: 'BN', lat: 4.9031, lon: 114.9398 },
-  { name: 'Vientiane', country: 'LA', lat: 17.9757, lon: 102.6331 },
-
-  { name: 'Melbourne', country: 'AU', lat: -37.8136, lon: 144.9631 },
-  { name: 'Brisbane', country: 'AU', lat: -27.4698, lon: 153.0251 },
-  { name: 'Perth', country: 'AU', lat: -31.9505, lon: 115.8605 },
-  { name: 'Auckland', country: 'NZ', lat: -36.8485, lon: 174.7633 },
-  { name: 'Wellington', country: 'NZ', lat: -41.2865, lon: 174.7762 },
-  { name: 'Suva', country: 'FJ', lat: -18.1416, lon: 178.4419 },
-  { name: 'Port Moresby', country: 'PG', lat: -9.4438, lon: 147.1803 }
+  { name: 'Berlin', country: 'DE', lat: 52.5200, lon: 13.4050 }
 ];
 
 // Values needing interpolation (e.g. a city name) are functions, not strings.
@@ -674,6 +557,7 @@ async function fetchWeather(city, requestId = ++latestWeatherRequestId) {
 async function fetchWeatherByCoords(lat, lon, requestId = ++latestWeatherRequestId) {
   hideError();
   weatherCard.classList.add('hidden');
+  weatherSuggestion.classList.add('hidden');
   forecastSection.classList.add('hidden');
   loading.classList.remove('hidden');
   setSearchPending(true);
@@ -1233,12 +1117,13 @@ async function renderOneMarker(city) {
   }
 }
 
-// The curated city list is large enough (100+) that fetching it all at
-// once on first load would blow past OpenWeatherMap's free-tier rate
-// limit. Cached markers (already fetched within MAP_CACHE_TTL_MS) render
-// immediately in parallel; anything new is throttled in small batches
-// with a pause between them so sustained request volume stays well under
-// the 60-calls/minute cap, leaving headroom for the user's own searches.
+// Pin count grows with the user's search history, which can reach 200
+// entries — fetching all of it at once on first load could still blow
+// past OpenWeatherMap's free-tier rate limit. Cached markers (already
+// fetched within MAP_CACHE_TTL_MS) render immediately in parallel;
+// anything new is throttled in small batches with a pause between them
+// so sustained request volume stays well under the 60-calls/minute cap,
+// leaving headroom for the user's own searches.
 const MAP_FETCH_BATCH_SIZE = 4;
 const MAP_FETCH_BATCH_DELAY_MS = 5000;
 
@@ -1246,13 +1131,13 @@ function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Deliberately not filtered to the current viewport: with 100+ curated
-// cities and a narrow app-width map (not a full-page map), zoom 2 only
-// shows a fraction of the world's longitude at a time, so viewport-only
-// fetching would leave most pins never loaded until manually panned to.
-// Every city gets a pin; the batching above is what protects the rate
-// limit instead. Still called on moveend (debounced) so a newly recorded
-// recent search — added after a search-triggered flyTo — gets its pin.
+// Deliberately not filtered to the current viewport: this app's map is
+// narrow (not a full-page map), so zoom 2 only shows a fraction of the
+// world's longitude at a time — viewport-only fetching would leave pins
+// never loaded until manually panned to. Every city in getMapCities()
+// gets a pin; the batching above is what protects the rate limit
+// instead. Still called on moveend (debounced) so a newly recorded
+// search — added after a search-triggered flyTo — gets its pin.
 async function loadMapMarkers() {
   if (!exploreMap) return;
 
@@ -1469,6 +1354,9 @@ function renderWeather(data) {
 
   weatherCard.classList.remove('hidden');
 
+  suggestionText.textContent = getWeatherSuggestion(data);
+  weatherSuggestion.classList.remove('hidden');
+
   currentCityData = {
     lat: data.coord.lat,
     lon: data.coord.lon
@@ -1479,6 +1367,53 @@ function renderWeather(data) {
 }
 
 const ATMOSPHERE_CONDITIONS = ['Mist', 'Smoke', 'Haze', 'Dust', 'Fog', 'Sand', 'Ash', 'Squall', 'Tornado'];
+
+// Bedtime hours: late enough that "go stargazing" or "great evening for a
+// walk" stops being realistic advice, even though it's technically still
+// "night" by isDaytimeAt's sunrise/sunset definition.
+function isBedtimeAt(data) {
+  const localHour = new Date((data.dt + data.timezone) * 1000).getUTCHours();
+  return localHour >= 23 || localHour < 5;
+}
+
+// Ranked most-to-least critical so overlapping conditions (e.g. rain +
+// freezing cold) show the one that matters most, not just whichever rule
+// happens to run first: storm > snow > freezing > rain > low visibility >
+// extreme heat > bedtime > clear night sky > mild/warm (day or night) >
+// cool. Temperature is read in Celsius regardless of the display unit,
+// same convention as resolveWeatherTheme above.
+function getWeatherSuggestion(data) {
+  const main = data.weather[0].main;
+  const tempC = currentUnit === 'metric' ? data.main.temp : (data.main.temp - 32) * 5 / 9;
+  // Same sunrise/sunset-based day/night call as the sun/moon background
+  // and the card's own ☀️/🌙 icon, not a fixed clock hour.
+  const isDay = isDaytimeAt(data);
+
+  if (main === 'Thunderstorm') return '⚡ Storm warning! Stay indoors and stay safe.';
+  if (main === 'Snow') return '❄️ Snow day! Enjoy the snow, but dress warmly.';
+  if (tempC < 5) return '🥶 Freezing cold! Stay warm and limit time outdoors.';
+  if (main === 'Rain' || main === 'Drizzle') return "☔ Rainy day ahead. Don't forget your umbrella!";
+  if (ATMOSPHERE_CONDITIONS.includes(main)) return '🌁 Low visibility. Drive safely and take it slow.';
+
+  if (tempC >= 30) {
+    return isDay
+      ? "🔥 It's scorching outside! Stay indoors, drink plenty of water, and avoid the sun."
+      : "🌙 It's a warm night. Make sure you have good ventilation or a fan running to stay cool.";
+  }
+
+  if (isBedtimeAt(data)) return "😴 It's late — time to wind down and get some sleep.";
+
+  if (main === 'Clear' && !isDay) return '🌙 Clear night sky! Perfect for stargazing.';
+
+  if (tempC >= 20) {
+    return isDay
+      ? '🌿 The weather is beautiful! Perfect time to go out and enjoy the day.'
+      : '🌙 Pleasant evening ahead. Great for a relaxing walk or sitting outside.';
+  }
+
+  if (tempC >= 10) return '🌤️ A bit cool, but still a good day to step outside.';
+  return "🧥 Chilly out there! Wear a jacket if you're heading out.";
+}
 
 // Precipitation/atmosphere conditions always win; a calm sky falls back to
 // night/hot/cold/clear/clouds by time of day and temperature (in Celsius,
@@ -1650,6 +1585,7 @@ function showError(message) {
   errorMessage.textContent = message;
   errorMessage.classList.remove('hidden');
   weatherCard.classList.add('hidden');
+  weatherSuggestion.classList.add('hidden');
 }
 
 function hideError() {
