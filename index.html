@@ -13,8 +13,17 @@
 
 <div class="app">
   <div class="app__header">
-    <h1 class="app__title">🌤️ Weather Dashboard</h1>
-    <button id="unit-toggle" class="unit-toggle" title="Toggle temperature unit">°C/°F</button>
+    <h1 id="app-title" class="app__title">🌤️ Weather Dashboard</h1>
+    <div class="header__controls">
+      <select id="language-select" class="language-select" title="Select language">
+        <option value="en">🇬🇧 English</option>
+        <option value="es">🇪🇸 Español</option>
+        <option value="zh">🇨🇳 中文</option>
+        <option value="hi">🇮🇳 हिन्दी</option>
+        <option value="ar">🇸🇦 العربية</option>
+      </select>
+      <button id="unit-toggle" class="unit-toggle" title="Toggle temperature unit">°C/°F</button>
+    </div>
   </div>
 
   <div class="tabs">
@@ -32,13 +41,13 @@
                 placeholder="Enter a city name..."
                 autocomplete="off"
         />
-        <button type="submit" class="search__button">Search</button>
+        <button type="submit" id="search-button" class="search__button">Search</button>
       </div>
       <div id="suggestions" class="suggestions hidden"></div>
     </form>
 
     <div id="recent-searches" class="recent-searches">
-      <span class="recent-label">🕒 Recent:</span>
+      <span id="recent-label" class="recent-label">🕒 Recent:</span>
       <div id="recent-list" class="recent-list"></div>
     </div>
 
@@ -53,18 +62,18 @@
       </div>
       <div class="card__details">
         <div class="card__detail">
-          <span class="card__detail-label">💧 Humidity</span>
+          <span id="humidity-label" class="card__detail-label">💧 Humidity</span>
           <span id="humidity" class="card__detail-value"></span>
         </div>
         <div class="card__detail">
-          <span class="card__detail-label">🌡️ Feels Like</span>
+          <span id="feels-like-label" class="card__detail-label">🌡️ Feels Like</span>
           <span id="feels-like" class="card__detail-value"></span>
         </div>
       </div>
     </div>
 
     <div id="popular-cities" class="popular-cities">
-      <h3>🌍 Popular Cities</h3>
+      <h3 id="popular-cities-title">🌍 Popular Cities</h3>
       <div id="popular-list" class="popular-list"></div>
     </div>
 

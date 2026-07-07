@@ -191,6 +191,12 @@ body {
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
+.header__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .unit-toggle {
   background: rgba(255, 255, 255, 0.2);
   border: 2px solid rgba(255, 255, 255, 0.3);
@@ -207,6 +213,27 @@ body {
 .unit-toggle:hover {
   background: rgba(255, 255, 255, 0.3);
   transform: scale(1.05);
+}
+
+.language-select {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 0.5rem 0.6rem;
+  border-radius: 2rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.language-select:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.language-select option {
+  color: #1a1a2e;
+  background: #fff;
 }
 
 /* ===== TABS ===== */
@@ -609,8 +636,16 @@ body {
     gap: 0.5rem;
   }
 
+  .header__controls {
+    width: 100%;
+  }
+
   .unit-toggle {
     width: 100%;
+  }
+
+  .language-select {
+    flex: 1;
   }
 
   .search__wrapper {

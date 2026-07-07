@@ -21,6 +21,14 @@ const historySearchInput = document.getElementById('history-search');
 const clearHistoryBtn = document.getElementById('clear-history-btn');
 const historyListEl = document.getElementById('history-list');
 
+const languageSelect = document.getElementById('language-select');
+const appTitleEl = document.getElementById('app-title');
+const searchButtonEl = document.getElementById('search-button');
+const recentLabelEl = document.getElementById('recent-label');
+const humidityLabelEl = document.getElementById('humidity-label');
+const feelsLikeLabelEl = document.getElementById('feels-like-label');
+const popularCitiesTitleEl = document.getElementById('popular-cities-title');
+
 const cityName = document.getElementById('city-name');
 const condition = document.getElementById('condition');
 const temperature = document.getElementById('temperature');
@@ -43,6 +51,10 @@ let currentCityData = null;
 let currentCityState = '';
 let userCoords = null;
 let activeBgLayer = 'a';
+let currentLanguage = localStorage.getItem('language') || 'en';
+// Last successfully rendered weather payload, kept only so a language
+// change can retranslate the condition text without an extra API call.
+let lastWeatherData = null;
 
 // Popular cities (pre-populated with specific locations)
 const POPULAR_CITIES = [
@@ -56,10 +68,248 @@ const POPULAR_CITIES = [
   { name: 'Mumbai', country: 'IN' }
 ];
 
+// Translations for the 5 most-spoken languages. Values that need
+// interpolation (e.g. a city name) are functions instead of plain strings.
+const TRANSLATIONS = {
+  en: {
+    appTitle: '🌤️ Weather Dashboard',
+    tabWeather: '🌤️ Weather',
+    tabHistory: '📜 History',
+    searchPlaceholder: 'Enter a city name...',
+    searchButton: 'Search',
+    recentLabel: '🕒 Recent:',
+    noRecentSearches: 'No recent searches',
+    humidityLabel: '💧 Humidity',
+    feelsLikeLabel: '🌡️ Feels Like',
+    popularCitiesTitle: '🌍 Popular Cities',
+    loading: 'Loading...',
+    historySearchPlaceholder: 'Filter history by city...',
+    clearAllHistory: '🗑️ Clear All',
+    clearHistoryTitle: 'Clear all history',
+    clearHistoryConfirm: 'Clear all search history? This cannot be undone.',
+    noHistoryYet: 'No search history yet.',
+    noHistoryMatch: 'No entries match your filter.',
+    deleteEntryTitle: 'Delete entry',
+    unitToggleTitle: 'Toggle temperature unit',
+    languageLabel: 'Select language',
+    multipleCitiesFound: 'Multiple cities found. Please select one:',
+    errorEnterCity: 'Please enter a city name.',
+    errorCityNotFound: (city) => `City "${city}" was not found. Check the spelling and try again.`,
+    errorGeocodeFailed: 'Could not find the city. Please check the spelling.',
+    errorGeocodeGeneric: 'Something went wrong while fetching the city data.',
+    errorInvalidApiKey: 'Invalid API key. Add your OpenWeatherMap API key in config.js.',
+    errorWeatherGeneric: 'Something went wrong while fetching the weather data.',
+    errorCityCountryNotFound: (city, country) => `City "${city}, ${country}" was not found.`,
+    errorCityCountryFailed: (city, country) => `Could not find city "${city}, ${country}".`
+  },
+  es: {
+    appTitle: '🌤️ Panel del Clima',
+    tabWeather: '🌤️ Clima',
+    tabHistory: '📜 Historial',
+    searchPlaceholder: 'Introduce el nombre de una ciudad...',
+    searchButton: 'Buscar',
+    recentLabel: '🕒 Recientes:',
+    noRecentSearches: 'Sin búsquedas recientes',
+    humidityLabel: '💧 Humedad',
+    feelsLikeLabel: '🌡️ Sensación Térmica',
+    popularCitiesTitle: '🌍 Ciudades Populares',
+    loading: 'Cargando...',
+    historySearchPlaceholder: 'Filtrar historial por ciudad...',
+    clearAllHistory: '🗑️ Borrar Todo',
+    clearHistoryTitle: 'Borrar todo el historial',
+    clearHistoryConfirm: '¿Borrar todo el historial de búsquedas? Esta acción no se puede deshacer.',
+    noHistoryYet: 'Aún no hay historial de búsquedas.',
+    noHistoryMatch: 'Ningún resultado coincide con tu filtro.',
+    deleteEntryTitle: 'Eliminar entrada',
+    unitToggleTitle: 'Cambiar unidad de temperatura',
+    languageLabel: 'Seleccionar idioma',
+    multipleCitiesFound: 'Se encontraron varias ciudades. Por favor selecciona una:',
+    errorEnterCity: 'Por favor introduce el nombre de una ciudad.',
+    errorCityNotFound: (city) => `No se encontró la ciudad "${city}". Verifica la ortografía e intenta de nuevo.`,
+    errorGeocodeFailed: 'No se pudo encontrar la ciudad. Verifica la ortografía.',
+    errorGeocodeGeneric: 'Ocurrió un error al buscar los datos de la ciudad.',
+    errorInvalidApiKey: 'Clave de API inválida. Agrega tu clave de OpenWeatherMap en config.js.',
+    errorWeatherGeneric: 'Ocurrió un error al obtener los datos del clima.',
+    errorCityCountryNotFound: (city, country) => `No se encontró la ciudad "${city}, ${country}".`,
+    errorCityCountryFailed: (city, country) => `No se pudo encontrar la ciudad "${city}, ${country}".`
+  },
+  zh: {
+    appTitle: '🌤️ 天气仪表盘',
+    tabWeather: '🌤️ 天气',
+    tabHistory: '📜 历史记录',
+    searchPlaceholder: '输入城市名称...',
+    searchButton: '搜索',
+    recentLabel: '🕒 最近:',
+    noRecentSearches: '暂无最近搜索',
+    humidityLabel: '💧 湿度',
+    feelsLikeLabel: '🌡️ 体感温度',
+    popularCitiesTitle: '🌍 热门城市',
+    loading: '加载中...',
+    historySearchPlaceholder: '按城市筛选历史记录...',
+    clearAllHistory: '🗑️ 清除全部',
+    clearHistoryTitle: '清除所有历史记录',
+    clearHistoryConfirm: '确定要清除所有搜索历史吗？此操作无法撤销。',
+    noHistoryYet: '暂无搜索历史。',
+    noHistoryMatch: '没有符合筛选条件的记录。',
+    deleteEntryTitle: '删除记录',
+    unitToggleTitle: '切换温度单位',
+    languageLabel: '选择语言',
+    multipleCitiesFound: '找到多个匹配城市，请选择一个：',
+    errorEnterCity: '请输入城市名称。',
+    errorCityNotFound: (city) => `未找到城市"${city}"。请检查拼写后重试。`,
+    errorGeocodeFailed: '未能找到该城市，请检查拼写。',
+    errorGeocodeGeneric: '获取城市数据时出错。',
+    errorInvalidApiKey: 'API密钥无效。请在 config.js 中添加你的 OpenWeatherMap API 密钥。',
+    errorWeatherGeneric: '获取天气数据时出错。',
+    errorCityCountryNotFound: (city, country) => `未找到城市"${city}, ${country}"。`,
+    errorCityCountryFailed: (city, country) => `无法找到城市"${city}, ${country}"。`
+  },
+  hi: {
+    appTitle: '🌤️ मौसम डैशबोर्ड',
+    tabWeather: '🌤️ मौसम',
+    tabHistory: '📜 इतिहास',
+    searchPlaceholder: 'शहर का नाम दर्ज करें...',
+    searchButton: 'खोजें',
+    recentLabel: '🕒 हाल की:',
+    noRecentSearches: 'कोई हाल की खोज नहीं',
+    humidityLabel: '💧 आर्द्रता',
+    feelsLikeLabel: '🌡️ महसूस होता है',
+    popularCitiesTitle: '🌍 लोकप्रिय शहर',
+    loading: 'लोड हो रहा है...',
+    historySearchPlaceholder: 'शहर के अनुसार इतिहास फ़िल्टर करें...',
+    clearAllHistory: '🗑️ सभी हटाएं',
+    clearHistoryTitle: 'सभी इतिहास हटाएं',
+    clearHistoryConfirm: 'क्या सारा खोज इतिहास हटाना है? इसे पूर्ववत नहीं किया जा सकता।',
+    noHistoryYet: 'अभी तक कोई खोज इतिहास नहीं है।',
+    noHistoryMatch: 'आपके फ़िल्टर से कोई प्रविष्टि मेल नहीं खाती।',
+    deleteEntryTitle: 'प्रविष्टि हटाएं',
+    unitToggleTitle: 'तापमान इकाई बदलें',
+    languageLabel: 'भाषा चुनें',
+    multipleCitiesFound: 'कई शहर मिले। कृपया एक चुनें:',
+    errorEnterCity: 'कृपया शहर का नाम दर्ज करें।',
+    errorCityNotFound: (city) => `शहर "${city}" नहीं मिला। वर्तनी जांचें और पुनः प्रयास करें।`,
+    errorGeocodeFailed: 'शहर नहीं मिल सका। कृपया वर्तनी जांचें।',
+    errorGeocodeGeneric: 'शहर डेटा प्राप्त करते समय कुछ गलत हो गया।',
+    errorInvalidApiKey: 'अमान्य API कुंजी। config.js में अपनी OpenWeatherMap API कुंजी जोड़ें।',
+    errorWeatherGeneric: 'मौसम डेटा प्राप्त करते समय कुछ गलत हो गया।',
+    errorCityCountryNotFound: (city, country) => `शहर "${city}, ${country}" नहीं मिला।`,
+    errorCityCountryFailed: (city, country) => `शहर "${city}, ${country}" नहीं मिल सका।`
+  },
+  ar: {
+    appTitle: '🌤️ لوحة الطقس',
+    tabWeather: '🌤️ الطقس',
+    tabHistory: '📜 السجل',
+    searchPlaceholder: 'أدخل اسم المدينة...',
+    searchButton: 'بحث',
+    recentLabel: '🕒 الأخيرة:',
+    noRecentSearches: 'لا توجد عمليات بحث حديثة',
+    humidityLabel: '💧 الرطوبة',
+    feelsLikeLabel: '🌡️ الإحساس الحراري',
+    popularCitiesTitle: '🌍 المدن الشائعة',
+    loading: 'جارٍ التحميل...',
+    historySearchPlaceholder: 'تصفية السجل حسب المدينة...',
+    clearAllHistory: '🗑️ مسح الكل',
+    clearHistoryTitle: 'مسح كل السجل',
+    clearHistoryConfirm: 'هل تريد مسح كل سجل البحث؟ لا يمكن التراجع عن هذا الإجراء.',
+    noHistoryYet: 'لا يوجد سجل بحث بعد.',
+    noHistoryMatch: 'لا توجد نتائج مطابقة لعامل التصفية.',
+    deleteEntryTitle: 'حذف الإدخال',
+    unitToggleTitle: 'تبديل وحدة الحرارة',
+    languageLabel: 'اختر اللغة',
+    multipleCitiesFound: 'تم العثور على عدة مدن. الرجاء اختيار واحدة:',
+    errorEnterCity: 'الرجاء إدخال اسم مدينة.',
+    errorCityNotFound: (city) => `لم يتم العثور على المدينة "${city}". تحقق من الإملاء وحاول مرة أخرى.`,
+    errorGeocodeFailed: 'تعذر العثور على المدينة. تحقق من الإملاء.',
+    errorGeocodeGeneric: 'حدث خطأ أثناء جلب بيانات المدينة.',
+    errorInvalidApiKey: 'مفتاح API غير صالح. أضف مفتاح OpenWeatherMap الخاص بك في config.js.',
+    errorWeatherGeneric: 'حدث خطأ أثناء جلب بيانات الطقس.',
+    errorCityCountryNotFound: (city, country) => `لم يتم العثور على المدينة "${city}, ${country}".`,
+    errorCityCountryFailed: (city, country) => `تعذر العثور على المدينة "${city}, ${country}".`
+  }
+};
+
+// Common OpenWeatherMap condition descriptions (always returned in English
+// by the API) mapped to their translation in each supported language.
+// Anything not in this table just falls back to the original English text.
+const WEATHER_CONDITION_TRANSLATIONS = {
+  'clear sky': { es: 'cielo despejado', zh: '晴朗', hi: 'साफ़ आसमान', ar: 'سماء صافية' },
+  'few clouds': { es: 'algo de nubes', zh: '少云', hi: 'हल्के बादल', ar: 'غيوم قليلة' },
+  'scattered clouds': { es: 'nubes dispersas', zh: '多云', hi: 'बिखरे बादल', ar: 'غيوم متفرقة' },
+  'broken clouds': { es: 'nubes rotas', zh: '多云转阴', hi: 'घने बादल', ar: 'غيوم متكسرة' },
+  'overcast clouds': { es: 'cielo nublado', zh: '阴天', hi: 'घटाटोप बादल', ar: 'غيوم كثيفة' },
+  'light rain': { es: 'lluvia ligera', zh: '小雨', hi: 'हल्की बारिश', ar: 'مطر خفيف' },
+  'moderate rain': { es: 'lluvia moderada', zh: '中雨', hi: 'मध्यम बारिश', ar: 'مطر معتدل' },
+  'heavy intensity rain': { es: 'lluvia intensa', zh: '大雨', hi: 'भारी बारिश', ar: 'مطر غزير' },
+  'rain': { es: 'lluvia', zh: '雨', hi: 'बारिश', ar: 'مطر' },
+  'shower rain': { es: 'chubascos', zh: '阵雨', hi: 'बौछारें', ar: 'زخات مطر' },
+  'drizzle': { es: 'llovizna', zh: '毛毛雨', hi: 'बूंदाबांदी', ar: 'رذاذ' },
+  'thunderstorm': { es: 'tormenta eléctrica', zh: '雷暴', hi: 'आंधी-तूफान', ar: 'عاصفة رعدية' },
+  'thunderstorm with rain': { es: 'tormenta con lluvia', zh: '雷阵雨', hi: 'बारिश के साथ आंधी', ar: 'عاصفة رعدية مع مطر' },
+  'snow': { es: 'nieve', zh: '雪', hi: 'बर्फ़बारी', ar: 'ثلج' },
+  'light snow': { es: 'nieve ligera', zh: '小雪', hi: 'हल्की बर्फ़बारी', ar: 'ثلج خفيف' },
+  'mist': { es: 'neblina', zh: '薄雾', hi: 'धुंध', ar: 'ضباب خفيف' },
+  'fog': { es: 'niebla', zh: '雾', hi: 'कोहरा', ar: 'ضباب' },
+  'haze': { es: 'bruma', zh: '霾', hi: 'धुंधलापन', ar: 'شبورة' },
+  'smoke': { es: 'humo', zh: '烟雾', hi: 'धुआं', ar: 'دخان' },
+  'dust': { es: 'polvo', zh: '浮尘', hi: 'धूल', ar: 'غبار' },
+  'tornado': { es: 'tornado', zh: '龙卷风', hi: 'बवंडर', ar: 'إعصار' },
+  'squalls': { es: 'ráfagas de viento', zh: '狂风', hi: 'तेज़ आंधी', ar: 'عواصف' }
+};
+
+// Looks up `key` in the current language, falling back to English if the
+// key or language is incomplete. Interpolated entries are functions.
+function t(key, ...args) {
+  const entry = TRANSLATIONS[currentLanguage]?.[key] ?? TRANSLATIONS.en[key];
+  return typeof entry === 'function' ? entry(...args) : entry;
+}
+
+// Translates a weather condition description (as returned by the API, e.g.
+// "light rain") into the current language via WEATHER_CONDITION_TRANSLATIONS.
+function translateCondition(description) {
+  if (currentLanguage === 'en') return description;
+  const entry = WEATHER_CONDITION_TRANSLATIONS[description.toLowerCase()];
+  return entry?.[currentLanguage] ?? description;
+}
+
+// Applies the current language to every static piece of UI text, plus the
+// weather card's condition (retranslated from the last fetched data, if
+// any, without re-hitting the API) and the currently rendered lists.
+function applyTranslations() {
+  document.documentElement.lang = currentLanguage;
+  document.documentElement.dir = currentLanguage === 'ar' ? 'rtl' : 'ltr';
+  languageSelect.value = currentLanguage;
+
+  appTitleEl.textContent = t('appTitle');
+  tabWeatherBtn.textContent = t('tabWeather');
+  tabHistoryBtn.textContent = t('tabHistory');
+  input.placeholder = t('searchPlaceholder');
+  searchButtonEl.textContent = t('searchButton');
+  recentLabelEl.textContent = t('recentLabel');
+  humidityLabelEl.textContent = t('humidityLabel');
+  feelsLikeLabelEl.textContent = t('feelsLikeLabel');
+  popularCitiesTitleEl.textContent = t('popularCitiesTitle');
+  loading.textContent = t('loading');
+  historySearchInput.placeholder = t('historySearchPlaceholder');
+  clearHistoryBtn.textContent = t('clearAllHistory');
+  clearHistoryBtn.title = t('clearHistoryTitle');
+  unitToggle.title = t('unitToggleTitle');
+  languageSelect.title = t('languageLabel');
+
+  renderRecentSearches();
+  if (!historyView.classList.contains('hidden')) renderHistory();
+  if (lastWeatherData) condition.textContent = translateCondition(lastWeatherData.weather[0].description);
+}
+
+languageSelect.addEventListener('change', () => {
+  currentLanguage = languageSelect.value;
+  localStorage.setItem('language', currentLanguage);
+  applyTranslations();
+});
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   updateUnitToggleText();
-  renderRecentSearches();
+  applyTranslations();
   renderPopularCities();
   requestUserLocation();
 });
@@ -174,7 +424,7 @@ form.addEventListener('submit', (event) => {
   event.preventDefault();
   const city = input.value.trim();
   if (!city) {
-    showError('Please enter a city name.');
+    showError(t('errorEnterCity'));
     return;
   }
 
@@ -221,7 +471,7 @@ async function fetchWeather(city) {
     const geoResponse = await fetch(geoUrl);
 
     if (!geoResponse.ok) {
-      showError('Could not find the city. Please check the spelling.');
+      showError(t('errorGeocodeFailed'));
       loading.classList.add('hidden');
       return;
     }
@@ -229,7 +479,7 @@ async function fetchWeather(city) {
     const cities = await geoResponse.json();
 
     if (cities.length === 0) {
-      showError(`City "${city}" was not found. Check the spelling and try again.`);
+      showError(t('errorCityNotFound', city));
       loading.classList.add('hidden');
       return;
     }
@@ -245,7 +495,7 @@ async function fetchWeather(city) {
       showCitySelection(sortCityResults(cities, city));
     }
   } catch {
-    showError('Something went wrong while fetching the city data.');
+    showError(t('errorGeocodeGeneric'));
     loading.classList.add('hidden');
   }
 }
@@ -262,9 +512,9 @@ async function fetchWeatherByCoords(lat, lon) {
 
     if (!response.ok) {
       if (response.status === 401) {
-        showError('Invalid API key. Add your OpenWeatherMap API key in config.js.');
+        showError(t('errorInvalidApiKey'));
       } else {
-        showError('Something went wrong while fetching the weather data.');
+        showError(t('errorWeatherGeneric'));
       }
       loading.classList.add('hidden');
       return;
@@ -274,7 +524,7 @@ async function fetchWeatherByCoords(lat, lon) {
     renderWeather(data);
     loading.classList.add('hidden');
   } catch {
-    showError('Something went wrong while fetching the weather data.');
+    showError(t('errorWeatherGeneric'));
     loading.classList.add('hidden');
   }
 }
@@ -291,7 +541,7 @@ async function fetchWeatherByCity(city, country) {
     const cities = await geoResponse.json();
 
     if (cities.length === 0) {
-      showError(`City "${city}, ${country}" was not found.`);
+      showError(t('errorCityCountryNotFound', city, country));
       loading.classList.add('hidden');
       return;
     }
@@ -302,14 +552,14 @@ async function fetchWeatherByCity(city, country) {
     saveSearchHistory(cityData);
     await fetchWeatherByCoords(cityData.lat, cityData.lon);
   } catch {
-    showError(`Could not find city "${city}, ${country}".`);
+    showError(t('errorCityCountryFailed', city, country));
     loading.classList.add('hidden');
   }
 }
 
 // Show city selection when multiple matches exist
 function showCitySelection(cities) {
-  const message = 'Multiple cities found. Please select one:';
+  const message = t('multipleCitiesFound');
 
   const errorDiv = errorMessage;
   errorDiv.classList.remove('hidden');
@@ -446,7 +696,7 @@ function saveRecentSearch(city) {
 function renderRecentSearches() {
   const recent = getRecentCities();
   if (recent.length === 0) {
-    recentList.innerHTML = '<span style="color: rgba(255,255,255,0.5); font-size: 0.85rem;">No recent searches</span>';
+    recentList.innerHTML = `<span style="color: rgba(255,255,255,0.5); font-size: 0.85rem;">${t('noRecentSearches')}</span>`;
     return;
   }
 
@@ -533,7 +783,7 @@ function renderHistory() {
 
   if (history.length === 0) {
     historyListEl.innerHTML = `<div class="history__empty">${
-      fullHistory.length === 0 ? 'No search history yet.' : 'No entries match your filter.'
+      fullHistory.length === 0 ? t('noHistoryYet') : t('noHistoryMatch')
     }</div>`;
     return;
   }
@@ -544,7 +794,7 @@ function renderHistory() {
         <span class="history__entry-city">${historyEntryLabel(entry)}</span>
         <span class="history__entry-time">${formatHistoryTimestamp(entry.timestamp)}</span>
       </div>
-      <button class="history__entry-delete" title="Delete entry">❌</button>
+      <button class="history__entry-delete" title="${t('deleteEntryTitle')}">❌</button>
     </div>
   `).join('');
 
@@ -574,7 +824,7 @@ historySearchInput.addEventListener('input', () => renderHistory());
 
 clearHistoryBtn.addEventListener('click', () => {
   if (getSearchHistory().length === 0) return;
-  if (!window.confirm('Clear all search history? This cannot be undone.')) return;
+  if (!window.confirm(t('clearHistoryConfirm'))) return;
   localStorage.removeItem(HISTORY_KEY);
   renderHistory();
 });
@@ -598,9 +848,10 @@ function formatCityFullName(data) {
 
 // Render Weather
 function renderWeather(data) {
+  lastWeatherData = data;
   const dayNightIcon = isDaytimeAt(data) ? '☀️' : '🌙';
   cityName.textContent = `${dayNightIcon} ${formatCityFullName(data)}`;
-  condition.textContent = data.weather[0].description;
+  condition.textContent = translateCondition(data.weather[0].description);
 
   const temp = Math.round(data.main.temp);
   const feelsLikeTemp = Math.round(data.main.feels_like);
@@ -612,7 +863,7 @@ function renderWeather(data) {
 
   const iconCode = data.weather[0].icon;
   weatherIcon.src = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
-  weatherIcon.alt = data.weather[0].description;
+  weatherIcon.alt = translateCondition(data.weather[0].description);
 
   weatherCard.classList.remove('hidden');
 
