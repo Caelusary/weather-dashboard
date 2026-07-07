@@ -4,6 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Weather Dashboard</title>
+  <!-- Warms up the connection (DNS+TLS) to the API/icon host before the
+       first fetch/img request actually fires, since every search and the
+       weather icon both hit this origin. -->
+  <link rel="preconnect" href="https://api.openweathermap.org" crossorigin />
+  <link rel="preconnect" href="https://openweathermap.org" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -18,35 +23,40 @@
       <span id="app-title-line2" class="app__title-line">Dashboard</span>
     </h1>
     <div class="header__controls">
-      <select id="language-select" class="language-select" title="Select language">
+      <select id="language-select" class="language-select" title="Select language" aria-label="Select language">
         <option value="en">GB&nbsp;&nbsp;|&nbsp;&nbsp;English</option>
         <option value="es">ES&nbsp;&nbsp;|&nbsp;&nbsp;Español</option>
         <option value="zh">CN&nbsp;&nbsp;|&nbsp;&nbsp;中文</option>
         <option value="hi">IN&nbsp;&nbsp;|&nbsp;&nbsp;हिन्दी</option>
         <option value="ar">SA&nbsp;&nbsp;|&nbsp;&nbsp;العربية</option>
       </select>
-      <button id="unit-toggle" class="unit-toggle" title="Toggle temperature unit">°C/°F</button>
+      <button id="unit-toggle" class="unit-toggle" title="Toggle temperature unit" aria-label="Toggle temperature unit">°C/°F</button>
     </div>
   </div>
 
-  <div class="tabs">
-    <button id="tab-weather" class="tab-btn tab-btn--active" data-view="weather">🌤️ Weather</button>
-    <button id="tab-history" class="tab-btn" data-view="history">📜 History</button>
+  <div class="tabs" role="tablist">
+    <button id="tab-weather" class="tab-btn tab-btn--active" data-view="weather" role="tab" aria-selected="true" aria-controls="weather-view">🌤️ Weather</button>
+    <button id="tab-history" class="tab-btn" data-view="history" role="tab" aria-selected="false" aria-controls="history-view">📜 History</button>
   </div>
 
-  <div id="weather-view" class="view">
+  <div id="weather-view" class="view" role="tabpanel" aria-labelledby="tab-weather">
     <form id="search-form" class="search">
       <div class="search__wrapper">
+        <label for="city-input" class="sr-only">City name</label>
         <input
                 type="text"
                 id="city-input"
                 class="search__input"
                 placeholder="Enter a city name..."
                 autocomplete="off"
+                role="combobox"
+                aria-expanded="false"
+                aria-controls="suggestions"
+                aria-autocomplete="list"
         />
         <button type="submit" id="search-button" class="search__button">Search</button>
       </div>
-      <div id="suggestions" class="suggestions hidden"></div>
+      <div id="suggestions" class="suggestions hidden" role="listbox"></div>
     </form>
 
     <div id="recent-searches" class="recent-searches">
@@ -54,14 +64,14 @@
       <div id="recent-list" class="recent-list"></div>
     </div>
 
-    <p id="error-message" class="error hidden"></p>
+    <p id="error-message" class="error hidden" role="alert" aria-live="assertive"></p>
 
     <div id="weather-card" class="card hidden">
       <h2 id="city-name" class="card__city"></h2>
       <p id="city-datetime" class="card__datetime"></p>
       <p id="condition" class="card__condition"></p>
       <div class="card__main">
-        <img id="weather-icon" class="card__icon" alt="Weather condition icon" />
+        <img id="weather-icon" class="card__icon" alt="Weather condition icon" width="96" height="96" />
         <span id="temperature" class="card__temperature"></span>
       </div>
       <div class="card__details">
@@ -76,7 +86,7 @@
       </div>
     </div>
 
-    <div id="forecast-loading" class="loading hidden">Loading forecast...</div>
+    <div id="forecast-loading" class="loading hidden" role="status" aria-live="polite">Loading forecast...</div>
 
     <div id="forecast" class="forecast hidden">
       <h3 id="forecast-title" class="forecast__title">📅 5-Day Forecast</h3>
@@ -88,12 +98,13 @@
       <div id="popular-list" class="popular-list"></div>
     </div>
 
-    <div id="loading" class="loading hidden">Loading...</div>
+    <div id="loading" class="loading hidden" role="status" aria-live="polite">Loading...</div>
   </div>
 
-  <div id="history-view" class="view hidden">
+  <div id="history-view" class="view hidden" role="tabpanel" aria-labelledby="tab-history">
     <div class="history">
       <div class="history__controls">
+        <label for="history-search" class="sr-only">Filter history by city</label>
         <input
                 type="text"
                 id="history-search"
@@ -101,14 +112,14 @@
                 placeholder="Filter history by city..."
                 autocomplete="off"
         />
-        <button id="clear-history-btn" class="history__clear-btn" title="Clear all history">🗑️ Clear All</button>
+        <button id="clear-history-btn" class="history__clear-btn" title="Clear all history" aria-label="Clear all history">🗑️ Clear All</button>
       </div>
       <div id="history-list" class="history__list"></div>
     </div>
   </div>
 </div>
 
-<script src="config.js"></script>
-<script src="script.js"></script>
+<script src="config.js" defer></script>
+<script src="script.js" defer></script>
 </body>
 </html>

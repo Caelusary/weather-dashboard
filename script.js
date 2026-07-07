@@ -58,6 +58,12 @@ let currentCityData = null;
 let currentCityState = '';
 let userCoords = null;
 let activeBgLayer = 'a';
+// Incremented at the moment each user-initiated search begins (via the
+// `requestId = ++latestWeatherRequestId` default parameters below) so that
+// a slow/out-of-order response for an older search can be detected and
+// dropped instead of overwriting the UI with stale data. See
+// fetchWeather/fetchWeatherByCity/fetchWeatherByCoords/fetchForecast.
+let latestWeatherRequestId = 0;
 let currentLanguage = localStorage.getItem('language') || 'en';
 // Last successfully rendered weather payload, kept only so a language
 // change can retranslate the condition text without an extra API call.
@@ -357,6 +363,8 @@ function switchView(view) {
   historyView.classList.toggle('hidden', isWeather);
   tabWeatherBtn.classList.toggle('tab-btn--active', isWeather);
   tabHistoryBtn.classList.toggle('tab-btn--active', !isWeather);
+  tabWeatherBtn.setAttribute('aria-selected', String(isWeather));
+  tabHistoryBtn.setAttribute('aria-selected', String(!isWeather));
   if (!isWeather) renderHistory();
 }
 
@@ -402,6 +410,21 @@ function distanceFromUser(lat, lon) {
 
 function normalizeForMatch(str) {
   return str.trim().toLowerCase();
+}
+
+// Escapes text before it's interpolated into an innerHTML template string.
+// Applied to anything that ultimately comes from the OpenWeatherMap API
+// (city/state/country names, weather condition descriptions) since that
+// data isn't attacker-uncontrolled by construction — the geocoding endpoint
+// is backed by community-editable place-name data — and must not be able
+// to inject markup into the page.
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Looks up a plain (comma-less) query against POPULAR_CITIES so well-known
@@ -484,8 +507,26 @@ function parseCityInput(input) {
   return null;
 }
 
+// Toggles the search button's pending state so a slow in-flight request
+// can't be fired again by a duplicate click/Enter, and so its busy state
+// is exposed to assistive tech (the visual "Loading..." text already
+// covers sighted users via aria-live, but the button itself gave no
+// indication it was mid-request).
+function setSearchPending(isPending) {
+  searchButtonEl.disabled = isPending;
+  searchButtonEl.setAttribute('aria-busy', String(isPending));
+}
+
 // Fetch weather by city name
-async function fetchWeather(city) {
+// requestId identifies which user-initiated search this call belongs to.
+// It's minted synchronously (via the default parameter, before any await)
+// at the moment the user acts, or threaded through from a caller that
+// already minted one for the same action. Any response that comes back
+// after a newer search has started is discarded below, so a slow response
+// for an older/abandoned search can never overwrite the UI with stale data
+// (protects against out-of-order responses and rapid double-submits, e.g.
+// searching "London" then quickly "Tokyo" before the first request resolves).
+async function fetchWeather(city, requestId = ++latestWeatherRequestId) {
   // A plain query (no ", Country" suffix) that names a well-known major city
   // (e.g. "Dubai") is resolved directly against its known country instead of
   // going through the ambiguous multi-result geocoding path, so it can't be
@@ -493,7 +534,7 @@ async function fetchWeather(city) {
   if (!parseCityInput(city)) {
     const popularMatch = findPopularCity(city);
     if (popularMatch) {
-      await fetchWeatherByCity(popularMatch.name, popularMatch.country);
+      await fetchWeatherByCity(popularMatch.name, popularMatch.country, requestId);
       return;
     }
   }
@@ -501,72 +542,84 @@ async function fetchWeather(city) {
   hideError();
   weatherCard.classList.add('hidden');
   loading.classList.remove('hidden');
+  setSearchPending(true);
 
   try {
     const geoUrl = `${GEO_URL}?q=${encodeURIComponent(city)}&limit=5&appid=${API_KEY}`;
     const geoResponse = await fetch(geoUrl);
 
+    if (requestId !== latestWeatherRequestId) return;
+
     if (!geoResponse.ok) {
-      showError(t('errorGeocodeFailed'));
-      loading.classList.add('hidden');
+      // 401/429/5xx previously all fell through to the generic "check the
+      // spelling" message, which is actively misleading when the real
+      // problem is an invalid/missing API key (e.g. a fresh checkout that
+      // copied config.example.js but never added a real key).
+      failWithError(geoResponse.status === 401 ? t('errorInvalidApiKey') : t('errorGeocodeFailed'));
       return;
     }
 
     const cities = await geoResponse.json();
+    if (requestId !== latestWeatherRequestId) return;
 
     if (cities.length === 0) {
-      showError(t('errorCityNotFound', city));
-      loading.classList.add('hidden');
+      failWithError(t('errorCityNotFound', city));
       return;
     }
 
     if (cities.length === 1) {
       const cityData = cities[0];
-      currentCityData = cityData;
-      currentCityState = cityData.state || '';
-      saveSearchHistory(cityData);
-      saveRecentSearch(cityData);
-      await fetchWeatherByCoords(cityData.lat, cityData.lon);
+      setCurrentCity(cityData);
+      recordCitySearch(cityData);
+      await fetchWeatherByCoords(cityData.lat, cityData.lon, requestId);
     } else {
       loading.classList.add('hidden');
+      setSearchPending(false);
       showCitySelection(sortCityResults(cities, city));
     }
   } catch {
-    showError(t('errorGeocodeGeneric'));
-    loading.classList.add('hidden');
+    if (requestId !== latestWeatherRequestId) return;
+    failWithError(t('errorGeocodeGeneric'));
   }
 }
 
 // Fetch weather by coordinates
-async function fetchWeatherByCoords(lat, lon) {
+async function fetchWeatherByCoords(lat, lon, requestId = ++latestWeatherRequestId) {
   hideError();
   weatherCard.classList.add('hidden');
   forecastSection.classList.add('hidden');
   loading.classList.remove('hidden');
+  setSearchPending(true);
+
+  // Kicked off immediately and NOT awaited here: the current-weather and
+  // forecast endpoints are independent (both only need lat/lon), so
+  // firing this in parallel with the fetch below instead of after it
+  // completes removes a full network round-trip from the critical path.
+  // fetchForecast manages its own loading indicator, so it doesn't need
+  // to block or be blocked by the main "Loading..." state. Passing
+  // requestId lets it drop a stale response the same way this function
+  // does below, if a newer search starts before it resolves.
+  fetchForecast(lat, lon, requestId);
 
   try {
     const url = `${API_URL}?lat=${lat}&lon=${lon}&units=${currentUnit}&appid=${API_KEY}`;
     const response = await fetch(url);
 
+    if (requestId !== latestWeatherRequestId) return;
+
     if (!response.ok) {
-      if (response.status === 401) {
-        showError(t('errorInvalidApiKey'));
-      } else {
-        showError(t('errorWeatherGeneric'));
-      }
-      loading.classList.add('hidden');
+      failWithError(response.status === 401 ? t('errorInvalidApiKey') : t('errorWeatherGeneric'));
       return;
     }
 
     const data = await response.json();
+    if (requestId !== latestWeatherRequestId) return;
     renderWeather(data);
     loading.classList.add('hidden');
-    // Fired without awaiting: the forecast has its own loading indicator
-    // and shouldn't hold up hiding the main "Loading..." state above.
-    fetchForecast(lat, lon);
+    setSearchPending(false);
   } catch {
-    showError(t('errorWeatherGeneric'));
-    loading.classList.add('hidden');
+    if (requestId !== latestWeatherRequestId) return;
+    failWithError(t('errorWeatherGeneric'));
   }
 }
 
@@ -574,19 +627,21 @@ async function fetchWeatherByCoords(lat, lon) {
 // midday condition cards. Fails silently (just hides its own loading
 // state) since the forecast is a supplementary feature — a failure here
 // shouldn't block or overwrite the already-successful current-weather view.
-async function fetchForecast(lat, lon) {
+async function fetchForecast(lat, lon, requestId) {
   forecastSection.classList.add('hidden');
   forecastLoading.classList.remove('hidden');
 
   try {
     const url = `${FORECAST_URL}?lat=${lat}&lon=${lon}&units=${currentUnit}&appid=${API_KEY}`;
     const response = await fetch(url);
+    if (requestId !== latestWeatherRequestId) return;
     if (!response.ok) {
       forecastLoading.classList.add('hidden');
       return;
     }
 
     const data = await response.json();
+    if (requestId !== latestWeatherRequestId) return;
     renderForecast(data);
   } catch {
     forecastLoading.classList.add('hidden');
@@ -664,8 +719,8 @@ function renderForecast(data) {
     return `
       <div class="forecast__card">
         <span class="forecast__day">${dayName}</span>
-        <span class="forecast__icon" role="img" aria-label="${description}">${icon}</span>
-        <span class="forecast__condition">${description}</span>
+        <span class="forecast__icon" role="img" aria-label="${escapeHtml(description)}">${icon}</span>
+        <span class="forecast__condition">${escapeHtml(description)}</span>
         <span class="forecast__temps"><span class="forecast__high">${high}${unitSymbol}</span> / <span class="forecast__low">${low}${unitSymbol}</span></span>
       </div>
     `;
@@ -676,31 +731,44 @@ function renderForecast(data) {
 }
 
 // Fetch weather by city + country
-async function fetchWeatherByCity(city, country) {
+async function fetchWeatherByCity(city, country, requestId = ++latestWeatherRequestId) {
   hideError();
   weatherCard.classList.add('hidden');
   loading.classList.remove('hidden');
+  setSearchPending(true);
 
   try {
     const geoUrl = `${GEO_URL}?q=${encodeURIComponent(city)},${encodeURIComponent(country)}&limit=1&appid=${API_KEY}`;
     const geoResponse = await fetch(geoUrl);
+
+    if (requestId !== latestWeatherRequestId) return;
+
+    // Was previously missing entirely: an unchecked response.ok meant a
+    // 401/429/5xx here (a JSON error body, not an array) fell through to
+    // `cities[0]` as undefined, throwing on `cityData.state` inside
+    // setCurrentCity and surfacing the wrong, misleading "city not found"
+    // message instead of the real cause. This path is hit by every Popular
+    // Cities click (shown on first load), so it mattered a lot.
+    if (!geoResponse.ok) {
+      failWithError(geoResponse.status === 401 ? t('errorInvalidApiKey') : t('errorCityCountryFailed', city, country));
+      return;
+    }
+
     const cities = await geoResponse.json();
+    if (requestId !== latestWeatherRequestId) return;
 
     if (cities.length === 0) {
-      showError(t('errorCityCountryNotFound', city, country));
-      loading.classList.add('hidden');
+      failWithError(t('errorCityCountryNotFound', city, country));
       return;
     }
 
     const cityData = cities[0];
-    currentCityData = cityData;
-    currentCityState = cityData.state || '';
-    saveSearchHistory(cityData);
-    saveRecentSearch(cityData);
-    await fetchWeatherByCoords(cityData.lat, cityData.lon);
+    setCurrentCity(cityData);
+    recordCitySearch(cityData);
+    await fetchWeatherByCoords(cityData.lat, cityData.lon, requestId);
   } catch {
-    showError(t('errorCityCountryFailed', city, country));
-    loading.classList.add('hidden');
+    if (requestId !== latestWeatherRequestId) return;
+    failWithError(t('errorCityCountryFailed', city, country));
   }
 }
 
@@ -711,26 +779,11 @@ function showCitySelection(cities) {
   const errorDiv = errorMessage;
   errorDiv.classList.remove('hidden');
   errorDiv.innerHTML = `
-    <div style="margin-bottom: 0.5rem;">${message}</div>
-    <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+    <div class="city-select__message">${message}</div>
+    <div class="city-select__list">
       ${cities.map((city) => `
-        <button
-          class="city-select-btn"
-          style="
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.2s ease;
-            width: 100%;
-          "
-          onmouseover="this.style.background='rgba(255,255,255,0.35)'"
-          onmouseout="this.style.background='rgba(255,255,255,0.2)'"
-        >
-          ${city.name}${city.state ? `, ${city.state}` : ''} (${city.country})
+        <button type="button" class="city-select-btn">
+          ${escapeHtml(city.name)}${city.state ? `, ${escapeHtml(city.state)}` : ''} (${escapeHtml(city.country)})
         </button>
       `).join('')}
     </div>
@@ -742,11 +795,9 @@ function showCitySelection(cities) {
   document.querySelectorAll('.city-select-btn').forEach((btn, i) => {
     btn.addEventListener('click', () => {
       const city = cities[i];
-      currentCityData = { lat: city.lat, lon: city.lon };
-      currentCityState = city.state || '';
+      setCurrentCity(city);
       input.value = city.name;
-      saveSearchHistory(city);
-      saveRecentSearch(city);
+      recordCitySearch(city);
       fetchWeatherByCoords(city.lat, city.lon);
       errorMessage.classList.add('hidden');
     });
@@ -758,14 +809,33 @@ input.addEventListener('input', debounce(async () => {
   const query = input.value.trim();
   if (query.length < 2) {
     suggestionsContainer.classList.add('hidden');
+    input.setAttribute('aria-expanded', 'false');
     return;
   }
   const suggestions = await getCitySuggestions(query);
   renderSuggestions(suggestions);
 }, 300));
 
-input.addEventListener('blur', () => {
-  setTimeout(() => suggestionsContainer.classList.add('hidden'), 200);
+input.addEventListener('blur', (event) => {
+  // Skip the close if focus is moving into the suggestions list itself
+  // (e.g. Tab from the input onto a keyboard-operable suggestion) — a
+  // plain unconditional timeout would hide the list out from under the
+  // item the user just tabbed onto, making it unreachable by keyboard.
+  if (event.relatedTarget && suggestionsContainer.contains(event.relatedTarget)) return;
+  setTimeout(() => {
+    suggestionsContainer.classList.add('hidden');
+    input.setAttribute('aria-expanded', 'false');
+  }, 200);
+});
+
+// Closes the list once keyboard focus leaves it for anything other than
+// the input (which has its own blur handler above) — otherwise tabbing
+// off the last suggestion into the rest of the page would leave a stale
+// suggestions list open.
+suggestionsContainer.addEventListener('focusout', (event) => {
+  if (event.relatedTarget === input || suggestionsContainer.contains(event.relatedTarget)) return;
+  suggestionsContainer.classList.add('hidden');
+  input.setAttribute('aria-expanded', 'false');
 });
 
 async function getCitySuggestions(query) {
@@ -800,29 +870,42 @@ function renderSuggestions(suggestions) {
   }
 
   suggestionsContainer.innerHTML = suggestions.map(s => {
-    const display = s.state ? `${s.name}, ${s.state}, ${s.country}` : `${s.name}, ${s.country}`;
+    const display = s.state
+      ? `${escapeHtml(s.name)}, ${escapeHtml(s.state)}, ${escapeHtml(s.country)}`
+      : `${escapeHtml(s.name)}, ${escapeHtml(s.country)}`;
     return `
-      <div class="suggestions__item">
+      <div class="suggestions__item" role="option" tabindex="0">
         ${display}${s.isRecent ? '<span style="margin-left: 0.5rem; font-size: 0.75rem; opacity: 0.65;">🕒 Recent</span>' : ''}
       </div>
     `;
   }).join('');
 
   suggestionsContainer.classList.remove('hidden');
+  input.setAttribute('aria-expanded', 'true');
 
   // Closures over the original `suggestions` objects rather than reading
   // back from data-* attributes — simpler, and avoids re-parsing values
   // back out of HTML.
+  const chooseSuggestion = (i) => {
+    const s = suggestions[i];
+    input.value = s.name;
+    setCurrentCity(s);
+    recordCitySearch(s);
+    fetchWeatherByCoords(s.lat, s.lon);
+    suggestionsContainer.classList.add('hidden');
+    input.setAttribute('aria-expanded', 'false');
+  };
+
   suggestionsContainer.querySelectorAll('.suggestions__item').forEach((el, i) => {
-    el.addEventListener('click', () => {
-      const s = suggestions[i];
-      input.value = s.name;
-      currentCityData = { lat: s.lat, lon: s.lon };
-      currentCityState = s.state || '';
-      saveSearchHistory(s);
-      saveRecentSearch(s);
-      fetchWeatherByCoords(s.lat, s.lon);
-      suggestionsContainer.classList.add('hidden');
+    el.addEventListener('click', () => chooseSuggestion(i));
+    // role="option" divs aren't natively keyboard-operable like a real
+    // <select>/<button> — without this, Tab+Enter can't pick a suggestion
+    // at all, silently locking keyboard users out of autocomplete.
+    el.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        chooseSuggestion(i);
+      }
     });
   });
 }
@@ -831,7 +914,18 @@ function renderSuggestions(suggestions) {
 // Entries are full city records (not just names), which lets clicking a
 // chip reload weather directly by coordinates instead of re-geocoding.
 function getRecentCities() {
-  const raw = JSON.parse(localStorage.getItem('recentCities')) || [];
+  let raw;
+  try {
+    raw = JSON.parse(localStorage.getItem('recentCities'));
+    if (!Array.isArray(raw)) raw = [];
+  } catch {
+    // Corrupted/invalid JSON in localStorage (manual edits, an old
+    // incompatible schema, a partial write, etc.) must not throw here —
+    // this is called from renderRecentSearches() during DOMContentLoaded,
+    // so an uncaught error would silently break app init (popular cities
+    // and geolocation never get set up) with nothing shown to the user.
+    raw = [];
+  }
   // Migrates any pre-existing plain-string entries (old schema) into the
   // richer shape so old localStorage data doesn't break or get discarded.
   return raw.map(entry => typeof entry === 'string'
@@ -863,7 +957,7 @@ function renderRecentSearches() {
   }
 
   recentList.innerHTML = recent.map(city => `
-    <span class="recent-item">${city.name}</span>
+    <span class="recent-item">${escapeHtml(city.name)}</span>
   `).join('');
 
   recentList.querySelectorAll('.recent-item').forEach((el, i) => {
@@ -871,8 +965,7 @@ function renderRecentSearches() {
       const city = recent[i];
       input.value = city.name;
       if (city.lat != null && city.lon != null) {
-        currentCityData = { lat: city.lat, lon: city.lon };
-        currentCityState = city.state || '';
+        setCurrentCity(city);
         fetchWeatherByCoords(city.lat, city.lon);
       } else {
         // Legacy entry saved before lat/lon were tracked — fall back to
@@ -909,7 +1002,15 @@ const HISTORY_KEY = 'searchHistory';
 const HISTORY_LIMIT = 200;
 
 function getSearchHistory() {
-  return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    // Corrupted/invalid JSON must not throw for callers (renderHistory,
+    // saveSearchHistory, deleteHistoryEntry) — treat it as empty history
+    // rather than crashing whichever of those triggered it.
+    return [];
+  }
 }
 
 // Logs a resolved city (from any search path: direct match, city-selection
@@ -963,10 +1064,10 @@ function renderHistory() {
   historyListEl.innerHTML = history.map(entry => `
     <div class="history__entry" data-timestamp="${entry.timestamp}">
       <div class="history__entry-info">
-        <span class="history__entry-city">${historyEntryLabel(entry)}</span>
+        <span class="history__entry-city">${escapeHtml(historyEntryLabel(entry))}</span>
         <span class="history__entry-time">${formatHistoryTimestamp(entry.timestamp)}</span>
       </div>
-      <button class="history__entry-delete" title="${t('deleteEntryTitle')}">❌</button>
+      <button class="history__entry-delete" title="${t('deleteEntryTitle')}" aria-label="${t('deleteEntryTitle')}">❌</button>
     </div>
   `).join('');
 
@@ -979,8 +1080,7 @@ function renderHistory() {
       if (!entry) return;
 
       input.value = historyEntryLabel(entry);
-      currentCityData = { lat: entry.lat, lon: entry.lon };
-      currentCityState = entry.state || '';
+      setCurrentCity(entry);
       switchView('weather');
       fetchWeatherByCoords(entry.lat, entry.lon);
     });
@@ -992,7 +1092,10 @@ function renderHistory() {
   });
 }
 
-historySearchInput.addEventListener('input', () => renderHistory());
+// Debounced like the city-suggestions input above: each keystroke would
+// otherwise re-read + JSON.parse the full (up to 200-entry) history from
+// localStorage and rebuild the entire list's innerHTML + listeners.
+historySearchInput.addEventListener('input', debounce(() => renderHistory(), 150));
 
 clearHistoryBtn.addEventListener('click', () => {
   if (getSearchHistory().length === 0) return;
@@ -1113,6 +1216,11 @@ function clearWeatherEffects() {
 // Subtle floating particles for a few themes; other themes stay clean.
 function renderWeatherEffects(themeKey) {
   clearWeatherEffects();
+  // Built onto an off-DOM fragment and attached with a single appendChild
+  // instead of one insertion per particle (up to 70 for the night theme) —
+  // avoids forcing up to 70 separate style/layout recalcs on a live,
+  // animated, absolutely-positioned container.
+  const fragment = document.createDocumentFragment();
 
   if (themeKey === 'snow') {
     for (let i = 0; i < 40; i++) {
@@ -1124,7 +1232,7 @@ function renderWeatherEffects(themeKey) {
       flake.style.opacity = `${0.4 + Math.random() * 0.6}`;
       flake.style.animationDuration = `${8 + Math.random() * 6}s`;
       flake.style.animationDelay = `${Math.random() * 8}s`;
-      weatherEffects.appendChild(flake);
+      fragment.appendChild(flake);
     }
   } else if (themeKey === 'rain' || themeKey === 'thunderstorm') {
     for (let i = 0; i < 50; i++) {
@@ -1133,7 +1241,7 @@ function renderWeatherEffects(themeKey) {
       drop.style.left = `${Math.random() * 100}%`;
       drop.style.animationDuration = `${0.6 + Math.random() * 0.5}s`;
       drop.style.animationDelay = `${-Math.random() * 2}s`;
-      weatherEffects.appendChild(drop);
+      fragment.appendChild(drop);
     }
   } else if (themeKey === 'clear') {
     for (let i = 0; i < 8; i++) {
@@ -1141,7 +1249,7 @@ function renderWeatherEffects(themeKey) {
       ray.className = 'sun-ray';
       ray.style.transform = `rotate(${i * (360 / 8)}deg)`;
       ray.style.animationDelay = `${i * 0.2}s`;
-      weatherEffects.appendChild(ray);
+      fragment.appendChild(ray);
     }
   } else if (themeKey === 'hot') {
     for (let i = 0; i < 16; i++) {
@@ -1154,7 +1262,7 @@ function renderWeatherEffects(themeKey) {
       ember.style.setProperty('--drift', `${(Math.random() * 40 - 20).toFixed(0)}px`);
       ember.style.animationDuration = `${5 + Math.random() * 4}s`;
       ember.style.animationDelay = `${Math.random() * 6}s`;
-      weatherEffects.appendChild(ember);
+      fragment.appendChild(ember);
     }
   } else if (themeKey === 'night') {
     for (let i = 0; i < 70; i++) {
@@ -1168,7 +1276,7 @@ function renderWeatherEffects(themeKey) {
       star.style.setProperty('--twinkle-min', `${0.15 + Math.random() * 0.25}`);
       star.style.animationDuration = `${2 + Math.random() * 3}s`;
       star.style.animationDelay = `${-Math.random() * 5}s`;
-      weatherEffects.appendChild(star);
+      fragment.appendChild(star);
     }
   } else if (themeKey === 'clouds') {
     for (let i = 0; i < 5; i++) {
@@ -1180,9 +1288,11 @@ function renderWeatherEffects(themeKey) {
       cloud.style.opacity = `${0.15 + Math.random() * 0.2}`;
       cloud.style.animationDuration = `${45 + Math.random() * 30}s`;
       cloud.style.animationDelay = `${-Math.random() * 60}s`;
-      weatherEffects.appendChild(cloud);
+      fragment.appendChild(cloud);
     }
   }
+
+  weatherEffects.appendChild(fragment);
 }
 
 // Error Handling
@@ -1195,6 +1305,33 @@ function showError(message) {
 function hideError() {
   errorMessage.textContent = '';
   errorMessage.classList.add('hidden');
+}
+
+// Shows an error message and tears down the main loading indicator in one
+// step — every fetch path's failure branch (bad response, 401, network
+// error) needs both, so the spinner never gets stuck visible under an error.
+function failWithError(message) {
+  showError(message);
+  loading.classList.add('hidden');
+  setSearchPending(false);
+}
+
+// Sets currentCityData/currentCityState for a resolved city record (from
+// any search path: direct match, city-selection picker, autocomplete,
+// popular city, or history). Normalizes to the bare {lat, lon} shape since
+// that's what ends up there anyway once the weather fetch resolves (see the
+// currentCityState comment near the top of this file).
+function setCurrentCity(cityData) {
+  currentCityData = { lat: cityData.lat, lon: cityData.lon };
+  currentCityState = cityData.state || '';
+}
+
+// Records a resolved city search in both the full history log and the
+// capped "recent" chip list. Called from every path that resolves a
+// concrete city (direct match, city-selection picker, autocomplete).
+function recordCitySearch(cityData) {
+  saveSearchHistory(cityData);
+  saveRecentSearch(cityData);
 }
 
 // Utility: Debounce

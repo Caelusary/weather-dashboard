@@ -1,1 +1,9 @@
 config.js
+
+# IDE
+.idea/
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db
