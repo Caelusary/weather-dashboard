@@ -2,8 +2,7 @@
   box-sizing: border-box;
 }
 
-/* Visually hidden but still exposed to assistive tech — used for form
-   labels that would otherwise duplicate a visible placeholder/icon. */
+/* Visually hidden but still exposed to assistive tech. */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -16,10 +15,9 @@
   border: 0;
 }
 
-/* Visible focus indicator for every interactive element, including the
-   ones below that intentionally suppress the UA default outline. Scoped
-   to :focus-visible so it only appears for keyboard/AT focus, not on
-   mouse click. */
+/* Scoped to :focus-visible so it only shows for keyboard/AT focus, not
+   mouse clicks — needed since several elements below suppress the UA
+   default outline. */
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
@@ -29,12 +27,11 @@ select:focus-visible,
 }
 
 :root {
-  /* Ink / neutrals */
   --color-ink: #1a1a2e;
   --color-white: #fff;
 
-  /* Translucent white surfaces (used for chrome backgrounds/borders across
-     header controls, tabs, cards, chips, and list rows) */
+  /* Translucent white surfaces used across header controls, tabs, cards,
+     chips, and list rows — number is the opacity percentage. */
   --surface-10: rgba(255, 255, 255, 0.1);
   --surface-15: rgba(255, 255, 255, 0.15);
   --surface-20: rgba(255, 255, 255, 0.2);
@@ -47,12 +44,10 @@ select:focus-visible,
   --surface-90: rgba(255, 255, 255, 0.9);
   --surface-95: rgba(255, 255, 255, 0.95);
 
-  /* Status */
   --danger: rgba(220, 53, 69, 0.85);
   --danger-solid: rgba(220, 53, 69, 1);
   --danger-subtle: rgba(220, 53, 69, 0.3);
 
-  /* Border radius scale */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 14px;
@@ -61,7 +56,6 @@ select:focus-visible,
   --radius-chip: 1rem;
   --radius-pill: 2rem;
 
-  /* Focus ring used wherever a component removes the UA default outline */
   --focus-ring: 0 0 0 3px rgba(255, 255, 255, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.4);
 }
 
@@ -91,9 +85,8 @@ body {
   text-align: center;
 }
 
-/* ===== WEATHER-THEMED BACKGROUNDS ===== */
-/* Two stacked full-viewport layers crossfade via opacity so gradients
-   (which CSS can't animate directly) transition smoothly. */
+/* Two stacked full-viewport layers crossfade via opacity, since CSS can't
+   animate a gradient change directly. */
 .bg-layer {
   position: fixed;
   inset: 0;
@@ -118,7 +111,6 @@ body {
 .theme-hot           { background: linear-gradient(135deg, #f12711 0%, #f5af19 100%); }
 .theme-cold          { background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%); }
 
-/* ===== WEATHER PARTICLE EFFECTS ===== */
 .weather-effects {
   position: fixed;
   inset: 0;
@@ -151,10 +143,8 @@ body {
   animation-fill-mode: backwards;
 }
 
-/* Travels entirely via transform, well clear of both edges (-20vh to
-   120vh), so no part of the drop ever overlaps the viewport at rest —
-   the previous "top: -5%" offset was too small relative to the drop's
-   own height and left it visibly clipped into view between loops. */
+/* Travels well clear of both edges (-20vh to 120vh) so no part of the
+   drop clips into view at rest. */
 @keyframes rainfall {
   0% { transform: translateY(-20vh); }
   100% { transform: translateY(120vh); }
@@ -229,11 +219,8 @@ body {
   to { transform: translateX(140vw) scale(var(--cloud-scale, 1)); }
 }
 
-/* Small static dots layered in .weather-effects (z-index: -1), which
-   sits in front of the .bg-layer gradient (z-index: -2) — so the stars
-   read as part of the night sky rather than being hidden behind its
-   opaque background. Each twinkles independently between a random dim
-   floor (--twinkle-min) and full brightness. */
+/* Sits in front of .bg-layer (z-index -2 vs -1) so stars read as part of
+   the night sky instead of hiding behind it. */
 .star {
   position: absolute;
   background: var(--color-white);
@@ -257,13 +244,9 @@ body {
   }
 }
 
-/* ===== HEADER ===== */
-/* A fixed-size .header__controls group anchored right, and a 2-line
-   stacked title anchored left — this is what keeps the header the same
-   height in every language: rather than one line whose wrap point shifts
-   unpredictably per language (some fit on one line, others don't, making
-   the header taller/shorter depending on language), the title always
-   renders as exactly two lines, each translated as its own short phrase. */
+/* Title is always exactly 2 lines (each its own translated phrase) rather
+   than one line whose wrap point shifts per language — keeps header
+   height consistent across languages. */
 .app__header {
   display: flex;
   flex-wrap: nowrap;
@@ -345,7 +328,6 @@ body {
   font-weight: 600;
 }
 
-/* ===== TABS ===== */
 .tabs {
   display: flex;
   gap: 0.75rem;
@@ -385,7 +367,6 @@ body {
   color: var(--color-ink);
 }
 
-/* ===== SEARCH ===== */
 .search {
   position: relative;
   margin-bottom: 1.25rem;
@@ -441,7 +422,6 @@ body {
   transform: none;
 }
 
-/* ===== SUGGESTIONS ===== */
 .suggestions {
   position: absolute;
   top: calc(100% + 4px);
@@ -471,7 +451,6 @@ body {
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-/* ===== RECENT SEARCHES ===== */
 .recent-searches {
   display: flex;
   align-items: center;
@@ -510,7 +489,6 @@ body {
   transform: scale(1.05);
 }
 
-/* ===== ERROR ===== */
 .error {
   color: var(--color-white);
   background: var(--danger);
@@ -525,9 +503,7 @@ body {
 }
 
 /* City-disambiguation buttons rendered into #error-message by
-   showCitySelection() — previously inline-styled with onmouseover/
-   onmouseout handlers, which meant no :focus-visible state at all for
-   keyboard users. */
+   showCitySelection(). */
 .city-select__message {
   margin-bottom: 0.5rem;
 }
@@ -554,18 +530,14 @@ body {
   background: var(--surface-35);
 }
 
-/* ===== LOADING ===== */
 .loading {
   color: var(--color-white);
   font-size: 0.95rem;
   margin-top: 0.5rem;
 }
 
-/* Matches the rendered .forecast__card row's approximate height so
-   swapping this placeholder out for the real forecast cards (after the
-   forecast fetch resolves) doesn't collapse/expand the layout underneath
-   it — that swap happens well after the initial paint, so an unsized
-   placeholder here is a real (not just theoretical) CLS contributor. */
+/* Matches the real forecast row's height so the post-fetch swap doesn't
+   shift the layout (a real CLS contributor otherwise). */
 #forecast-loading {
   display: flex;
   align-items: center;
@@ -573,7 +545,6 @@ body {
   min-height: 140px;
 }
 
-/* ===== WEATHER CARD ===== */
 .card {
   background: rgba(20, 20, 35, 0.3);
   border: 1px solid var(--surface-20);
@@ -648,7 +619,6 @@ body {
   font-weight: 600;
 }
 
-/* ===== 5-DAY FORECAST ===== */
 .forecast {
   margin-bottom: 1.75rem;
   text-align: left;
@@ -735,7 +705,6 @@ body {
   opacity: 0.65;
 }
 
-/* ===== POPULAR CITIES ===== */
 .popular-cities {
   margin-top: 2rem;
   padding: 1.5rem;
@@ -773,7 +742,6 @@ body {
   transform: scale(1.05);
 }
 
-/* ===== HISTORY ===== */
 .history__controls {
   display: flex;
   gap: 0.5rem;
@@ -892,7 +860,6 @@ body {
   color: var(--color-white);
 }
 
-/* ===== RESPONSIVE ===== */
 @media (max-width: 480px) {
   .app {
     padding: 1.75rem;
