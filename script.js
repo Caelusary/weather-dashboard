@@ -294,7 +294,11 @@ function translateCondition(description) {
 // any, without re-hitting the API) and the currently rendered lists.
 function applyTranslations() {
   document.documentElement.lang = currentLanguage;
-  document.documentElement.dir = currentLanguage === 'ar' ? 'rtl' : 'ltr';
+  // Layout intentionally stays LTR for every language, including Arabic —
+  // only the text content translates. Switching `dir` to "rtl" would flip
+  // the whole page's flex/alignment direction, which reads as a layout
+  // glitch rather than a real Arabic UI (this app doesn't mirror its
+  // iconography/controls to actually support an RTL layout).
   languageSelect.value = currentLanguage;
 
   appTitleEl.textContent = t('appTitle');
@@ -581,6 +585,25 @@ async function fetchForecast(lat, lon) {
 // currently selected UI language.
 const FORECAST_DAY_LOCALES = { en: 'en-US', es: 'es-ES', zh: 'zh-CN', hi: 'hi-IN', ar: 'ar-SA' };
 
+// Maps a forecast entry's weather condition to a representative emoji
+// (rain gets its own icon rather than falling through to the generic
+// partly-cloudy default) instead of relying on OWM's icon sprite.
+function getForecastIcon(entry) {
+  const isNight = entry.weather[0].icon.endsWith('n');
+  switch (entry.weather[0].main) {
+    case 'Thunderstorm': return '⛈️';
+    case 'Drizzle': return '🌦️';
+    case 'Rain': return '🌧️';
+    case 'Snow': return '🌨️';
+    case 'Mist': case 'Smoke': case 'Haze': case 'Fog':
+    case 'Dust': case 'Sand': case 'Ash': return '🌫️';
+    case 'Squall': case 'Tornado': return '🌪️';
+    case 'Clear': return isNight ? '🌙' : '☀️';
+    case 'Clouds': return isNight ? '☁️' : '🌤️';
+    default: return '🌤️';
+  }
+}
+
 // Groups the forecast's 3-hour entries into calendar days using the
 // city's own timezone offset (not the browser's), same trick as
 // isDaytimeAt: add the offset to the UTC timestamp, then read the
@@ -618,11 +641,12 @@ function renderForecast(data) {
     );
     const dayName = day.date.toLocaleDateString(locale, { weekday: 'short', timeZone: 'UTC' });
     const description = translateCondition(midday.weather[0].description);
+    const icon = getForecastIcon(midday);
 
     return `
       <div class="forecast__card">
         <span class="forecast__day">${dayName}</span>
-        <img class="forecast__icon" src="https://openweathermap.org/img/wn/${midday.weather[0].icon}@2x.png" alt="${description}" />
+        <span class="forecast__icon" role="img" aria-label="${description}">${icon}</span>
         <span class="forecast__condition">${description}</span>
         <span class="forecast__temps"><span class="forecast__high">${high}${unitSymbol}</span> / <span class="forecast__low">${low}${unitSymbol}</span></span>
       </div>
