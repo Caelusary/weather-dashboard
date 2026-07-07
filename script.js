@@ -24,6 +24,7 @@ const weatherIcon = document.getElementById('weather-icon');
 let currentUnit = localStorage.getItem('unit') || 'metric';
 let currentCity = '';
 let currentCityData = null;
+let userCoords = null;
 
 // Popular cities (pre-populated with specific locations)
 const POPULAR_CITIES = [
@@ -42,7 +43,52 @@ document.addEventListener('DOMContentLoaded', () => {
   updateUnitToggleText();
   renderRecentSearches();
   renderPopularCities();
+  requestUserLocation();
 });
+
+// Geolocation: best-effort — leaves userCoords null (no sorting) if
+// unsupported, denied, or the request times out.
+function requestUserLocation() {
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      userCoords = {
+        lat: position.coords.latitude,
+        lon: position.coords.longitude
+      };
+    },
+    () => {
+      userCoords = null;
+    },
+    { timeout: 10000 }
+  );
+}
+
+function toRadians(degrees) {
+  return (degrees * Math.PI) / 180;
+}
+
+// Haversine distance in km between userCoords and a given point.
+function distanceFromUser(lat, lon) {
+  if (!userCoords) return null;
+
+  const R = 6371;
+  const dLat = toRadians(lat - userCoords.lat);
+  const dLon = toRadians(lon - userCoords.lon);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(userCoords.lat)) * Math.cos(toRadians(lat)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Sorts closest-first when the user's location is known; otherwise
+// returns the list unchanged (default behavior).
+function sortByDistance(cities) {
+  if (!userCoords) return cities;
+  return [...cities].sort((a, b) => distanceFromUser(a.lat, a.lon) - distanceFromUser(b.lat, b.lon));
+}
 
 // Unit Toggle
 unitToggle.addEventListener('click', () => {
@@ -120,7 +166,7 @@ async function fetchWeather(city) {
       await fetchWeatherByCoords(cityData.lat, cityData.lon);
     } else {
       loading.classList.add('hidden');
-      showCitySelection(cities);
+      showCitySelection(sortByDistance(cities));
     }
   } catch {
     showError('Something went wrong while fetching the city data.');
@@ -250,7 +296,7 @@ async function getCitySuggestions(query) {
     const response = await fetch(url);
     if (!response.ok) return [];
     const data = await response.json();
-    return data.map(city => ({
+    const suggestions = data.map(city => ({
       name: city.name,
       country: city.country,
       state: city.state || '',
@@ -258,6 +304,7 @@ async function getCitySuggestions(query) {
       lon: city.lon,
       display: city.state ? `${city.name}, ${city.state}, ${city.country}` : `${city.name}, ${city.country}`
     }));
+    return sortByDistance(suggestions);
   } catch {
     return [];
   }

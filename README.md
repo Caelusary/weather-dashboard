@@ -6,6 +6,7 @@ A simple weather dashboard that lets you search for a city and see its current t
 
 - Search bar to look up weather by city name
 - Displays temperature, weather condition, humidity, and "feels like" temperature
+- Location-aware search: with your permission, sorts city matches and autocomplete suggestions by distance from you, closest first (falls back to the default order if location access is denied or unavailable)
 - Modern UI with a gradient background and glassmorphism card
 - Error handling for invalid city names and API issues
 
@@ -26,6 +27,8 @@ A simple weather dashboard that lets you search for a city and see its current t
 ## Usage
 
 Type a city name into the search bar and press **Search** (or hit Enter). The dashboard will display the current weather for that city, or show an error message if the city can't be found.
+
+If you allow location access when prompted, ambiguous searches (city selection list and autocomplete suggestions) are sorted by distance from your current location, closest first. Denying or ignoring the prompt has no effect on functionality — results just aren't distance-sorted.
 
 ## Files
 
