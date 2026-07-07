@@ -195,16 +195,27 @@ body {
 }
 
 /* ===== HEADER ===== */
+/* A fixed-size .header__controls group anchored right, and a title that
+   can truncate (never wrap to a 2nd line or push controls around) anchored
+   left — this is what keeps the header identical in every language: the
+   title's translated length varies a lot (e.g. "Weather Dashboard" vs
+   "天气仪表盘"), but the box geometry of every element never does. */
 .app__header {
   display: flex;
+  flex-wrap: nowrap;
   justify-content: space-between;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1rem;
   margin-bottom: 2rem;
 }
 
 .app__title {
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: #fff;
   font-size: 1.75rem;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
@@ -212,21 +223,24 @@ body {
 
 .header__controls {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 0.75rem;
 }
 
 .unit-toggle {
+  flex-shrink: 0;
   background: rgba(255, 255, 255, 0.2);
   border: 2px solid rgba(255, 255, 255, 0.3);
   color: white;
-  padding: 0.5rem 1rem;
+  width: 70px;
+  padding: 0.5rem 0.75rem;
   border-radius: 2rem;
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 600;
+  text-align: center;
   transition: all 0.3s ease;
-  min-width: 60px;
 }
 
 .unit-toggle:hover {
@@ -235,10 +249,11 @@ body {
 }
 
 .language-select {
+  flex-shrink: 0;
   background: #fff;
   border: 3px solid #000;
   color: #000;
-  width: 180px;
+  width: 140px;
   padding: 0.5rem 0.75rem;
   border-radius: 2rem;
   cursor: pointer;
@@ -279,6 +294,10 @@ body {
 
 .tab-btn {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: rgba(255, 255, 255, 0.75);
@@ -314,6 +333,7 @@ body {
 
 .search__wrapper {
   display: flex;
+  flex-wrap: nowrap;
   gap: 0.75rem;
 }
 
@@ -334,6 +354,8 @@ body {
 }
 
 .search__button {
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 0.75rem 1.25rem;
   border: none;
   border-radius: 12px;
@@ -394,6 +416,8 @@ body {
 }
 
 .recent-label {
+  flex-shrink: 0;
+  white-space: nowrap;
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.85rem;
   font-weight: 500;
