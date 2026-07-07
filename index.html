@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <h1 class="app__title">Weather Dashboard</h1>
+
+    <form id="search-form" class="search">
+      <input
+        type="text"
+        id="city-input"
+        class="search__input"
+        placeholder="Enter a city name..."
+        autocomplete="off"
+      />
+      <button type="submit" class="search__button">Search</button>
+    </form>
+
+    <p id="error-message" class="error hidden"></p>
+
+    <div id="weather-card" class="card hidden">
+      <h2 id="city-name" class="card__city"></h2>
+      <p id="condition" class="card__condition"></p>
+      <div class="card__main">
+        <span id="temperature" class="card__temperature"></span>
+      </div>
+      <div class="card__details">
+        <div class="card__detail">
+          <span class="card__detail-label">Humidity</span>
+          <span id="humidity" class="card__detail-value"></span>
+        </div>
+        <div class="card__detail">
+          <span class="card__detail-label">Feels Like</span>
+          <span id="feels-like" class="card__detail-value"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="loading" class="loading hidden">Loading...</div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
