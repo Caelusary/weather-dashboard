@@ -567,8 +567,8 @@ body {
 }
 
 .forecast__icon {
-  width: 52px;
-  height: 52px;
+  font-size: 2.25rem;
+  line-height: 1;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
 }
 
@@ -819,8 +819,7 @@ body {
   }
 
   .forecast__icon {
-    width: 42px;
-    height: 42px;
+    font-size: 1.85rem;
   }
 
   .history__controls {
