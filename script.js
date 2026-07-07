@@ -92,16 +92,34 @@ function normalizeForMatch(str) {
   return str.trim().toLowerCase();
 }
 
-// Sorts cities whose name exactly matches the searched-for city name to the
-// top (e.g. "Batangas City" itself ahead of unrelated partial matches), then
-// by distance from the user within each group when location is known.
+// Looks up a plain (comma-less) query against POPULAR_CITIES so well-known
+// major cities (e.g. "Dubai" -> Dubai, AE) can be prioritized over obscure
+// same-named towns that the geocoding API also returns.
+function findPopularCity(name) {
+  const normalized = normalizeForMatch(name);
+  return POPULAR_CITIES.find(c => normalizeForMatch(c.name) === normalized) || null;
+}
+
+// Ranks a city result: 0 = exact name match that is also the well-known
+// POPULAR_CITIES entry for that name (e.g. Dubai, AE over an obscure
+// same-named village), 1 = exact name match only, 2 = everything else.
+function cityRank(city, queryName) {
+  const nameExact = normalizeForMatch(city.name) === queryName;
+  if (!nameExact) return 2;
+
+  const popularMatch = findPopularCity(queryName);
+  if (popularMatch && city.country === popularMatch.country) return 0;
+  return 1;
+}
+
+// Sorts cities by rank (see cityRank) first, then by distance from the user
+// within each rank tier when location is known.
 function sortCityResults(cities, query) {
   const queryName = normalizeForMatch(parseCityInput(query)?.name ?? query);
 
   return [...cities].sort((a, b) => {
-    const aExact = normalizeForMatch(a.name) === queryName;
-    const bExact = normalizeForMatch(b.name) === queryName;
-    if (aExact !== bExact) return aExact ? -1 : 1;
+    const rankDiff = cityRank(a, queryName) - cityRank(b, queryName);
+    if (rankDiff !== 0) return rankDiff;
 
     if (!userCoords) return 0;
     return distanceFromUser(a.lat, a.lon) - distanceFromUser(b.lat, b.lon);
@@ -156,6 +174,18 @@ function parseCityInput(input) {
 
 // Fetch weather by city name
 async function fetchWeather(city) {
+  // A plain query (no ", Country" suffix) that names a well-known major city
+  // (e.g. "Dubai") is resolved directly against its known country instead of
+  // going through the ambiguous multi-result geocoding path, so it can't be
+  // shadowed by an obscure same-named town.
+  if (!parseCityInput(city)) {
+    const popularMatch = findPopularCity(city);
+    if (popularMatch) {
+      await fetchWeatherByCity(popularMatch.name, popularMatch.country);
+      return;
+    }
+  }
+
   hideError();
   weatherCard.classList.add('hidden');
   loading.classList.remove('hidden');
