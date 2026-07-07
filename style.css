@@ -238,6 +238,7 @@ body {
   background: #fff;
   border: 3px solid #000;
   color: #000;
+  width: 180px;
   padding: 0.5rem 0.75rem;
   border-radius: 2rem;
   cursor: pointer;
@@ -245,6 +246,9 @@ body {
   font-weight: 600;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .language-select:hover {
@@ -315,6 +319,7 @@ body {
 
 .search__input {
   flex: 1;
+  min-width: 0;
   padding: 0.75rem 1rem;
   border: none;
   border-radius: 12px;
@@ -451,6 +456,12 @@ body {
 .card__city {
   margin: 0;
   font-size: 1.5rem;
+}
+
+.card__datetime {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  opacity: 0.75;
 }
 
 .card__condition {
