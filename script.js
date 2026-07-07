@@ -1,4 +1,4 @@
-const API_KEY = 'YOUR_OPENWEATHERMAP_API_KEY';
+// API_KEY comes from config.js (gitignored) — see config.example.js for setup.
 const API_URL = 'https://api.openweathermap.org/data/2.5/weather';
 
 const form = document.getElementById('search-form');
