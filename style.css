@@ -80,16 +80,21 @@ body {
 
 .raindrop {
   position: absolute;
-  top: -5%;
+  top: 0;
   width: 2px;
   height: 60px;
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.55));
   animation: rainfall linear infinite;
+  animation-fill-mode: backwards;
 }
 
+/* Travels entirely via transform, well clear of both edges (-20vh to
+   120vh), so no part of the drop ever overlaps the viewport at rest —
+   the previous "top: -5%" offset was too small relative to the drop's
+   own height and left it visibly clipped into view between loops. */
 @keyframes rainfall {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(110vh); }
+  0% { transform: translateY(-20vh); }
+  100% { transform: translateY(120vh); }
 }
 
 .sun-ray {

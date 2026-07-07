@@ -555,8 +555,8 @@ function renderWeatherEffects(themeKey) {
       const drop = document.createElement('span');
       drop.className = 'raindrop';
       drop.style.left = `${Math.random() * 100}%`;
-      drop.style.animationDuration = `${0.4 + Math.random() * 0.35}s`;
-      drop.style.animationDelay = `${Math.random() * 2}s`;
+      drop.style.animationDuration = `${0.6 + Math.random() * 0.5}s`;
+      drop.style.animationDelay = `${-Math.random() * 2}s`;
       weatherEffects.appendChild(drop);
     }
   } else if (themeKey === 'clear') {
