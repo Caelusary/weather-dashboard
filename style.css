@@ -505,6 +505,93 @@ body {
   font-weight: 600;
 }
 
+/* ===== 5-DAY FORECAST ===== */
+.forecast {
+  margin-bottom: 1.75rem;
+  text-align: left;
+}
+
+.forecast__title {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin: 0 0 1rem;
+  text-align: center;
+}
+
+.forecast__list {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+}
+
+.forecast__list::-webkit-scrollbar {
+  height: 6px;
+}
+
+.forecast__list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+}
+
+.forecast__card {
+  flex: 0 0 auto;
+  min-width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1rem 0.6rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.forecast__card:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.forecast__day {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.forecast__icon {
+  width: 52px;
+  height: 52px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+
+.forecast__condition {
+  font-size: 0.72rem;
+  text-align: center;
+  text-transform: capitalize;
+  opacity: 0.85;
+  min-height: 1.6em;
+  line-height: 1.2;
+}
+
+.forecast__temps {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.forecast__low {
+  font-weight: 500;
+  opacity: 0.65;
+}
+
 /* ===== POPULAR CITIES ===== */
 .popular-cities {
   margin-top: 2rem;
@@ -724,6 +811,16 @@ body {
   .popular-item {
     font-size: 0.75rem;
     padding: 0.3rem 0.75rem;
+  }
+
+  .forecast__card {
+    min-width: 82px;
+    padding: 0.85rem 0.5rem;
+  }
+
+  .forecast__icon {
+    width: 42px;
+    height: 42px;
   }
 
   .history__controls {
