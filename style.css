@@ -704,6 +704,23 @@ body {
   font-weight: 600;
 }
 
+/* Deliberately not the same tone as .card — a distinct amber-tinted glass
+   so the suggestion reads as its own callout, not more weather-card data. */
+.suggestion {
+  background: rgba(255, 179, 71, 0.14);
+  border: 1px solid rgba(255, 179, 71, 0.3);
+  border-radius: var(--radius-xl);
+  padding: 1.1rem 1.5rem;
+  margin-bottom: 1.75rem;
+  color: var(--color-white);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.suggestion__text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
 .forecast {
   margin-bottom: 1.75rem;
   text-align: left;
