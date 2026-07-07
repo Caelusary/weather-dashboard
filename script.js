@@ -13,6 +13,14 @@ const unitToggle = document.getElementById('unit-toggle');
 const recentList = document.getElementById('recent-list');
 const popularList = document.getElementById('popular-list');
 
+const tabWeatherBtn = document.getElementById('tab-weather');
+const tabHistoryBtn = document.getElementById('tab-history');
+const weatherView = document.getElementById('weather-view');
+const historyView = document.getElementById('history-view');
+const historySearchInput = document.getElementById('history-search');
+const clearHistoryBtn = document.getElementById('clear-history-btn');
+const historyListEl = document.getElementById('history-list');
+
 const cityName = document.getElementById('city-name');
 const condition = document.getElementById('condition');
 const temperature = document.getElementById('temperature');
@@ -55,6 +63,19 @@ document.addEventListener('DOMContentLoaded', () => {
   renderPopularCities();
   requestUserLocation();
 });
+
+// Tabs (Weather / History)
+function switchView(view) {
+  const isWeather = view === 'weather';
+  weatherView.classList.toggle('hidden', !isWeather);
+  historyView.classList.toggle('hidden', isWeather);
+  tabWeatherBtn.classList.toggle('tab-btn--active', isWeather);
+  tabHistoryBtn.classList.toggle('tab-btn--active', !isWeather);
+  if (!isWeather) renderHistory();
+}
+
+tabWeatherBtn.addEventListener('click', () => switchView('weather'));
+tabHistoryBtn.addEventListener('click', () => switchView('history'));
 
 // Geolocation: best-effort — leaves userCoords null (no sorting) if
 // unsupported, denied, or the request times out.
@@ -217,6 +238,7 @@ async function fetchWeather(city) {
       const cityData = cities[0];
       currentCityData = cityData;
       currentCityState = cityData.state || '';
+      saveSearchHistory(cityData);
       await fetchWeatherByCoords(cityData.lat, cityData.lon);
     } else {
       loading.classList.add('hidden');
@@ -277,6 +299,7 @@ async function fetchWeatherByCity(city, country) {
     const cityData = cities[0];
     currentCityData = cityData;
     currentCityState = cityData.state || '';
+    saveSearchHistory(cityData);
     await fetchWeatherByCoords(cityData.lat, cityData.lon);
   } catch {
     showError(`Could not find city "${city}, ${country}".`);
@@ -299,6 +322,8 @@ function showCitySelection(cities) {
           data-lat="${city.lat}"
           data-lon="${city.lon}"
           data-state="${city.state || ''}"
+          data-name="${city.name}"
+          data-country="${city.country}"
           style="
             background: rgba(255,255,255,0.2);
             border: 1px solid rgba(255,255,255,0.3);
@@ -326,6 +351,7 @@ function showCitySelection(cities) {
       currentCityData = { lat, lon };
       currentCityState = btn.dataset.state || '';
       input.value = btn.textContent.split('(')[0].trim();
+      saveSearchHistory({ name: btn.dataset.name, country: btn.dataset.country, state: btn.dataset.state, lat, lon });
       fetchWeatherByCoords(lat, lon);
       errorMessage.classList.add('hidden');
     });
@@ -380,7 +406,7 @@ function renderSuggestions(suggestions) {
   }
 
   suggestionsContainer.innerHTML = suggestions.map(s => `
-    <div class="suggestions__item" data-lat="${s.lat}" data-lon="${s.lon}" data-name="${s.name}" data-state="${s.state || ''}">
+    <div class="suggestions__item" data-lat="${s.lat}" data-lon="${s.lon}" data-name="${s.name}" data-state="${s.state || ''}" data-country="${s.country}">
       ${s.display}${s.isRecent ? '<span style="margin-left: 0.5rem; font-size: 0.75rem; opacity: 0.65;">🕒 Recent</span>' : ''}
     </div>
   `).join('');
@@ -395,6 +421,7 @@ function renderSuggestions(suggestions) {
       input.value = name;
       currentCityData = { lat, lon };
       currentCityState = el.dataset.state || '';
+      saveSearchHistory({ name, country: el.dataset.country, state: el.dataset.state, lat, lon });
       fetchWeatherByCoords(lat, lon);
       saveRecentSearch(name);
       suggestionsContainer.classList.add('hidden');
@@ -454,6 +481,103 @@ function renderPopularCities() {
     });
   });
 }
+
+// Search History (full log, unlike the capped 5-entry "recent" chips above)
+const HISTORY_KEY = 'searchHistory';
+const HISTORY_LIMIT = 200;
+
+function getSearchHistory() {
+  return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+}
+
+// Logs a resolved city (from any search path: direct match, city-selection
+// picker, autocomplete, or popular-city click) with the time it was
+// searched. Capped at HISTORY_LIMIT so localStorage can't grow unbounded.
+function saveSearchHistory(cityData) {
+  const history = getSearchHistory();
+  history.unshift({
+    name: cityData.name,
+    country: cityData.country,
+    state: cityData.state || '',
+    lat: cityData.lat,
+    lon: cityData.lon,
+    timestamp: Date.now()
+  });
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, HISTORY_LIMIT)));
+  if (!historyView.classList.contains('hidden')) renderHistory();
+}
+
+function deleteHistoryEntry(timestamp) {
+  const history = getSearchHistory().filter(entry => entry.timestamp !== timestamp);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  renderHistory();
+}
+
+function formatHistoryTimestamp(timestamp) {
+  return new Date(timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function historyEntryLabel(entry) {
+  const parts = [entry.name];
+  if (entry.state) parts.push(entry.state);
+  parts.push(entry.country);
+  return parts.join(', ');
+}
+
+function renderHistory() {
+  const fullHistory = getSearchHistory();
+  const filter = normalizeForMatch(historySearchInput.value);
+  const history = filter
+    ? fullHistory.filter(entry => normalizeForMatch(historyEntryLabel(entry)).includes(filter))
+    : fullHistory;
+
+  if (history.length === 0) {
+    historyListEl.innerHTML = `<div class="history__empty">${
+      fullHistory.length === 0 ? 'No search history yet.' : 'No entries match your filter.'
+    }</div>`;
+    return;
+  }
+
+  historyListEl.innerHTML = history.map(entry => `
+    <div class="history__entry" data-timestamp="${entry.timestamp}">
+      <div class="history__entry-info">
+        <span class="history__entry-city">${historyEntryLabel(entry)}</span>
+        <span class="history__entry-time">${formatHistoryTimestamp(entry.timestamp)}</span>
+      </div>
+      <button class="history__entry-delete" title="Delete entry">❌</button>
+    </div>
+  `).join('');
+
+  historyListEl.querySelectorAll('.history__entry').forEach(el => {
+    el.addEventListener('click', (event) => {
+      if (event.target.closest('.history__entry-delete')) return;
+
+      const timestamp = Number(el.dataset.timestamp);
+      const entry = getSearchHistory().find(h => h.timestamp === timestamp);
+      if (!entry) return;
+
+      input.value = historyEntryLabel(entry);
+      currentCityData = { lat: entry.lat, lon: entry.lon };
+      currentCityState = entry.state || '';
+      switchView('weather');
+      fetchWeatherByCoords(entry.lat, entry.lon);
+    });
+
+    el.querySelector('.history__entry-delete').addEventListener('click', (event) => {
+      event.stopPropagation();
+      deleteHistoryEntry(Number(el.dataset.timestamp));
+    });
+  });
+}
+
+historySearchInput.addEventListener('input', () => renderHistory());
+
+clearHistoryBtn.addEventListener('click', () => {
+  if (getSearchHistory().length === 0) return;
+  if (!window.confirm('Clear all search history? This cannot be undone.')) return;
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
+});
 
 // Determines day vs. night in the city's own local time, using the
 // timezone offset (seconds from UTC) the weather API returns alongside the
