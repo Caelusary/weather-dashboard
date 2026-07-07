@@ -7,6 +7,7 @@
   <!-- Warms up DNS+TLS to the API/icon host before the first request fires. -->
   <link rel="preconnect" href="https://api.openweathermap.org" crossorigin />
   <link rel="preconnect" href="https://openweathermap.org" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -96,6 +97,12 @@
       <div id="popular-list" class="popular-list"></div>
     </div>
 
+    <div id="explore-map-section" class="explore-map">
+      <h3 id="explore-map-title">🌍 Explore Weather</h3>
+      <div id="explore-map" class="explore-map__container"></div>
+      <div id="explore-map-loading" class="loading explore-map__loading hidden" role="status" aria-live="polite">Loading map weather...</div>
+    </div>
+
     <div id="loading" class="loading hidden" role="status" aria-live="polite">Loading...</div>
   </div>
 
@@ -118,6 +125,7 @@
 </div>
 
 <script src="config.js" defer></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <script src="script.js" defer></script>
 </body>
 </html>

@@ -101,7 +101,7 @@ body {
 }
 
 .theme-default      { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 50%, #667eea 100%); }
-.theme-clear         { background: linear-gradient(135deg, #ffb347 0%, #ff6b6b 100%); }
+.theme-clear         { background: linear-gradient(135deg, #8ec5e8 0%, #f7d488 100%); }
 .theme-clouds        { background: linear-gradient(135deg, #bdc3c7 0%, #95a5a6 100%); }
 .theme-rain          { background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%); }
 .theme-thunderstorm  { background: linear-gradient(135deg, #0f0c29 0%, #302b63 100%); }
@@ -150,20 +150,75 @@ body {
   100% { transform: translateY(120vh); }
 }
 
-.sun-ray {
+/* Sun and moon share one fixed anchor (upper right) so day/night skies
+   read consistently. In the clouds theme the sun is appended to the DOM
+   before the drifting clouds, so clouds naturally paint over it and their
+   existing translucency lets its glow show through as they pass. */
+.celestial {
   position: absolute;
-  top: 50%;
+  top: 8%;
+  right: 9%;
+  width: 112px;
+  height: 112px;
+  animation: celestial-rise 2.2s ease-out;
+}
+
+.celestial--sun {
+  animation: celestial-rise 2.2s ease-out, sun-drift 160s linear infinite;
+}
+
+@keyframes celestial-rise {
+  from { transform: translateY(50px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes sun-drift {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.sun-beam {
+  position: absolute;
   left: 50%;
-  width: 2px;
-  height: 45vh;
-  background: linear-gradient(to top, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.25));
-  transform-origin: top center;
-  animation: sunpulse 4s ease-in-out infinite;
+  bottom: 50%;
+  width: 3px;
+  margin-left: -1.5px;
+  transform-origin: center bottom;
+  background: linear-gradient(to top, rgba(255, 214, 140, 0), rgba(255, 214, 140, 0.55));
+  filter: blur(1px);
+  animation: sunpulse 5s ease-in-out infinite;
 }
 
 @keyframes sunpulse {
-  0%, 100% { opacity: 0.25; }
-  50% { opacity: 0.6; }
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.85; }
+}
+
+.sun-core {
+  position: absolute;
+  inset: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 35%, #fffbea 0%, #ffe08a 42%, #ffb84d 75%, #ff9a3c 100%);
+  box-shadow:
+    0 0 36px 12px rgba(255, 200, 110, 0.55),
+    0 0 84px 36px rgba(255, 170, 80, 0.25);
+}
+
+.moon-core {
+  position: absolute;
+  inset: 22px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 36% 32%, #fdfdfb 0%, #e6e6f0 45%, #b9b9cc 78%, #9d9db3 100%);
+  box-shadow:
+    0 0 30px 10px rgba(220, 220, 250, 0.4),
+    0 0 70px 30px rgba(180, 180, 225, 0.18);
+}
+
+.moon-crater {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(120, 120, 150, 0.3);
 }
 
 .ember {
@@ -239,7 +294,8 @@ body {
     transition-duration: 0.3s;
   }
 
-  .snowflake, .raindrop, .sun-ray, .ember, .drift-cloud, .star {
+  .snowflake, .raindrop, .sun-beam, .ember, .drift-cloud, .star,
+  .celestial, .celestial--sun {
     animation: none;
   }
 }
@@ -475,18 +531,47 @@ body {
 }
 
 .recent-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   background: var(--surface-15);
-  padding: 0.25rem 0.75rem;
+  padding: 0.25rem 0.4rem 0.25rem 0.75rem;
   border-radius: var(--radius-chip);
   color: var(--color-white);
-  cursor: pointer;
   font-size: 0.85rem;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease;
 }
 
 .recent-item:hover {
   background: var(--surface-30);
-  transform: scale(1.05);
+}
+
+.recent-item__label {
+  cursor: pointer;
+}
+
+.recent-item__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  opacity: 0.6;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.recent-item__remove:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.15);
 }
 
 .error {
@@ -742,6 +827,98 @@ body {
   transform: scale(1.05);
 }
 
+.explore-map {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--surface-10);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(4px);
+}
+
+.explore-map h3 {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin: 0 0 1rem;
+}
+
+.explore-map__container {
+  height: 400px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--surface-20);
+  background: rgba(20, 20, 35, 0.3);
+}
+
+.explore-map__loading {
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+  text-align: center;
+}
+
+/* Leaflet ships its own control/attribution styling; this only reskins
+   the bits that would otherwise clash with the app's dark glass theme. */
+.map-marker {
+  background: none;
+  border: none;
+}
+
+.map-marker__pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  font-size: 1rem;
+}
+
+.map-marker__pin > * {
+  transform: rotate(45deg);
+}
+
+.map-highlight__ring {
+  display: block;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  animation: map-pulse 1s ease-out 2;
+}
+
+@keyframes map-pulse {
+  0% { transform: scale(0.4); opacity: 1; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+.leaflet-popup-content-wrapper {
+  background: rgba(20, 20, 35, 0.92);
+  color: var(--color-white);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.leaflet-popup-tip {
+  background: rgba(20, 20, 35, 0.92);
+}
+
+.leaflet-popup-content {
+  margin: 0.65rem 0.85rem;
+}
+
+.map-popup strong {
+  font-size: 0.9rem;
+}
+
+.map-popup__reading {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
 .history__controls {
   display: flex;
   gap: 0.5rem;
@@ -898,6 +1075,10 @@ body {
     flex-direction: column;
     gap: 0.85rem;
     margin-bottom: 1.25rem;
+  }
+
+  .explore-map__container {
+    height: 300px;
   }
 
   .card__temperature {

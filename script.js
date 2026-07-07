@@ -12,6 +12,8 @@ const loading = document.getElementById('loading');
 const unitToggle = document.getElementById('unit-toggle');
 const recentList = document.getElementById('recent-list');
 const popularList = document.getElementById('popular-list');
+const exploreMapEl = document.getElementById('explore-map');
+const exploreMapLoading = document.getElementById('explore-map-loading');
 
 const tabWeatherBtn = document.getElementById('tab-weather');
 const tabHistoryBtn = document.getElementById('tab-history');
@@ -64,15 +66,141 @@ let currentLanguage = localStorage.getItem('language') || 'en';
 let lastWeatherData = null;
 let lastForecastData = null;
 
+const RECENT_CHIP_LIMIT = 7;
+const POPULAR_CHIP_LIMIT = 10;
+
+// Coordinates are hardcoded (rather than geocoded on load) so the map's
+// pins for this fixed list don't cost an extra API round-trip each visit.
 const POPULAR_CITIES = [
-  { name: 'London', country: 'GB' },
-  { name: 'New York', country: 'US' },
-  { name: 'Tokyo', country: 'JP' },
-  { name: 'Paris', country: 'FR' },
-  { name: 'Sydney', country: 'AU' },
-  { name: 'Dubai', country: 'AE' },
-  { name: 'Singapore', country: 'SG' },
-  { name: 'Mumbai', country: 'IN' }
+  { name: 'London', country: 'GB', lat: 51.5074, lon: -0.1278 },
+  { name: 'New York', country: 'US', lat: 40.7128, lon: -74.0060 },
+  { name: 'Tokyo', country: 'JP', lat: 35.6762, lon: 139.6503 },
+  { name: 'Paris', country: 'FR', lat: 48.8566, lon: 2.3522 },
+  { name: 'Sydney', country: 'AU', lat: -33.8688, lon: 151.2093 },
+  { name: 'Dubai', country: 'AE', lat: 25.2048, lon: 55.2708 },
+  { name: 'Singapore', country: 'SG', lat: 1.3521, lon: 103.8198 },
+  { name: 'Mumbai', country: 'IN', lat: 19.0760, lon: 72.8777 },
+  { name: 'Los Angeles', country: 'US', lat: 34.0522, lon: -118.2437 },
+  { name: 'Berlin', country: 'DE', lat: 52.5200, lon: 13.4050 },
+
+  // Beyond this point: a much larger set of major world cities, added so
+  // the Explore Weather map shows broad global coverage. Only the first
+  // POPULAR_CHIP_LIMIT entries above render as "Popular Cities" chips —
+  // renderPopularCities() slices the array, but the map (getMapCities())
+  // uses the whole thing.
+  { name: 'Toronto', country: 'CA', lat: 43.6532, lon: -79.3832 },
+  { name: 'Chicago', country: 'US', lat: 41.8781, lon: -87.6298 },
+  { name: 'Mexico City', country: 'MX', lat: 19.4326, lon: -99.1332 },
+  { name: 'Vancouver', country: 'CA', lat: 49.2827, lon: -123.1207 },
+  { name: 'Miami', country: 'US', lat: 25.7617, lon: -80.1918 },
+  { name: 'San Francisco', country: 'US', lat: 37.7749, lon: -122.4194 },
+  { name: 'Houston', country: 'US', lat: 29.7604, lon: -95.3698 },
+  { name: 'Montreal', country: 'CA', lat: 45.5019, lon: -73.5674 },
+  { name: 'Boston', country: 'US', lat: 42.3601, lon: -71.0589 },
+  { name: 'Seattle', country: 'US', lat: 47.6062, lon: -122.3321 },
+
+  { name: 'Sao Paulo', country: 'BR', lat: -23.5505, lon: -46.6333 },
+  { name: 'Rio de Janeiro', country: 'BR', lat: -22.9068, lon: -43.1729 },
+  { name: 'Buenos Aires', country: 'AR', lat: -34.6037, lon: -58.3816 },
+  { name: 'Lima', country: 'PE', lat: -12.0464, lon: -77.0428 },
+  { name: 'Bogota', country: 'CO', lat: 4.7110, lon: -74.0721 },
+  { name: 'Santiago', country: 'CL', lat: -33.4489, lon: -70.6693 },
+  { name: 'Caracas', country: 'VE', lat: 10.4806, lon: -66.9036 },
+  { name: 'Quito', country: 'EC', lat: -0.1807, lon: -78.4678 },
+  { name: 'Montevideo', country: 'UY', lat: -34.9011, lon: -56.1645 },
+  { name: 'La Paz', country: 'BO', lat: -16.5000, lon: -68.1500 },
+
+  { name: 'Madrid', country: 'ES', lat: 40.4168, lon: -3.7038 },
+  { name: 'Rome', country: 'IT', lat: 41.9028, lon: 12.4964 },
+  { name: 'Amsterdam', country: 'NL', lat: 52.3676, lon: 4.9041 },
+  { name: 'Vienna', country: 'AT', lat: 48.2082, lon: 16.3738 },
+  { name: 'Barcelona', country: 'ES', lat: 41.3851, lon: 2.1734 },
+  { name: 'Moscow', country: 'RU', lat: 55.7558, lon: 37.6173 },
+  { name: 'Istanbul', country: 'TR', lat: 41.0082, lon: 28.9784 },
+  { name: 'Athens', country: 'GR', lat: 37.9838, lon: 23.7275 },
+  { name: 'Warsaw', country: 'PL', lat: 52.2297, lon: 21.0122 },
+  { name: 'Prague', country: 'CZ', lat: 50.0755, lon: 14.4378 },
+  { name: 'Lisbon', country: 'PT', lat: 38.7223, lon: -9.1393 },
+  { name: 'Dublin', country: 'IE', lat: 53.3498, lon: -6.2603 },
+  { name: 'Stockholm', country: 'SE', lat: 59.3293, lon: 18.0686 },
+  { name: 'Oslo', country: 'NO', lat: 59.9139, lon: 10.7522 },
+  { name: 'Copenhagen', country: 'DK', lat: 55.6761, lon: 12.5683 },
+  { name: 'Helsinki', country: 'FI', lat: 60.1699, lon: 24.9384 },
+  { name: 'Brussels', country: 'BE', lat: 50.8503, lon: 4.3517 },
+  { name: 'Zurich', country: 'CH', lat: 47.3769, lon: 8.5417 },
+  { name: 'Budapest', country: 'HU', lat: 47.4979, lon: 19.0402 },
+  { name: 'Bucharest', country: 'RO', lat: 44.4268, lon: 26.1025 },
+  { name: 'Kyiv', country: 'UA', lat: 50.4501, lon: 30.5234 },
+  { name: 'Milan', country: 'IT', lat: 45.4642, lon: 9.1900 },
+  { name: 'Munich', country: 'DE', lat: 48.1351, lon: 11.5820 },
+  { name: 'Hamburg', country: 'DE', lat: 53.5511, lon: 9.9937 },
+  { name: 'Edinburgh', country: 'GB', lat: 55.9533, lon: -3.1883 },
+  { name: 'Manchester', country: 'GB', lat: 53.4808, lon: -2.2426 },
+
+  { name: 'Riyadh', country: 'SA', lat: 24.7136, lon: 46.6753 },
+  { name: 'Doha', country: 'QA', lat: 25.2854, lon: 51.5310 },
+  { name: 'Abu Dhabi', country: 'AE', lat: 24.4539, lon: 54.3773 },
+  { name: 'Tel Aviv', country: 'IL', lat: 32.0853, lon: 34.7818 },
+  { name: 'Amman', country: 'JO', lat: 31.9454, lon: 35.9284 },
+  { name: 'Beirut', country: 'LB', lat: 33.8938, lon: 35.5018 },
+  { name: 'Baghdad', country: 'IQ', lat: 33.3152, lon: 44.3661 },
+  { name: 'Tehran', country: 'IR', lat: 35.6892, lon: 51.3890 },
+  { name: 'Kuwait City', country: 'KW', lat: 29.3759, lon: 47.9774 },
+  { name: 'Muscat', country: 'OM', lat: 23.5880, lon: 58.3829 },
+
+  { name: 'Cairo', country: 'EG', lat: 30.0444, lon: 31.2357 },
+  { name: 'Lagos', country: 'NG', lat: 6.5244, lon: 3.3792 },
+  { name: 'Nairobi', country: 'KE', lat: -1.2921, lon: 36.8219 },
+  { name: 'Johannesburg', country: 'ZA', lat: -26.2041, lon: 28.0473 },
+  { name: 'Cape Town', country: 'ZA', lat: -33.9249, lon: 18.4241 },
+  { name: 'Casablanca', country: 'MA', lat: 33.5731, lon: -7.5898 },
+  { name: 'Addis Ababa', country: 'ET', lat: 9.0300, lon: 38.7400 },
+  { name: 'Accra', country: 'GH', lat: 5.6037, lon: -0.1870 },
+  { name: 'Tunis', country: 'TN', lat: 36.8065, lon: 10.1815 },
+  { name: 'Algiers', country: 'DZ', lat: 36.7538, lon: 3.0588 },
+  { name: 'Kinshasa', country: 'CD', lat: -4.4419, lon: 15.2663 },
+  { name: 'Dakar', country: 'SN', lat: 14.7167, lon: -17.4677 },
+
+  { name: 'Delhi', country: 'IN', lat: 28.7041, lon: 77.1025 },
+  { name: 'Bangalore', country: 'IN', lat: 12.9716, lon: 77.5946 },
+  { name: 'Kolkata', country: 'IN', lat: 22.5726, lon: 88.3639 },
+  { name: 'Chennai', country: 'IN', lat: 13.0827, lon: 80.2707 },
+  { name: 'Karachi', country: 'PK', lat: 24.8607, lon: 67.0011 },
+  { name: 'Lahore', country: 'PK', lat: 31.5497, lon: 74.3436 },
+  { name: 'Dhaka', country: 'BD', lat: 23.8103, lon: 90.4125 },
+  { name: 'Colombo', country: 'LK', lat: 6.9271, lon: 79.8612 },
+  { name: 'Kathmandu', country: 'NP', lat: 27.7172, lon: 85.3240 },
+  { name: 'Islamabad', country: 'PK', lat: 33.6844, lon: 73.0479 },
+
+  { name: 'Beijing', country: 'CN', lat: 39.9042, lon: 116.4074 },
+  { name: 'Shanghai', country: 'CN', lat: 31.2304, lon: 121.4737 },
+  { name: 'Hong Kong', country: 'HK', lat: 22.3193, lon: 114.1694 },
+  { name: 'Seoul', country: 'KR', lat: 37.5665, lon: 126.9780 },
+  { name: 'Osaka', country: 'JP', lat: 34.6937, lon: 135.5023 },
+  { name: 'Taipei', country: 'TW', lat: 25.0330, lon: 121.5654 },
+  { name: 'Guangzhou', country: 'CN', lat: 23.1291, lon: 113.2644 },
+  { name: 'Shenzhen', country: 'CN', lat: 22.5431, lon: 114.0579 },
+  { name: 'Busan', country: 'KR', lat: 35.1796, lon: 129.0756 },
+  { name: 'Ulaanbaatar', country: 'MN', lat: 47.8864, lon: 106.9057 },
+
+  { name: 'Bangkok', country: 'TH', lat: 13.7563, lon: 100.5018 },
+  { name: 'Jakarta', country: 'ID', lat: -6.2088, lon: 106.8456 },
+  { name: 'Manila', country: 'PH', lat: 14.5995, lon: 120.9842 },
+  { name: 'Kuala Lumpur', country: 'MY', lat: 3.1390, lon: 101.6869 },
+  { name: 'Ho Chi Minh City', country: 'VN', lat: 10.8231, lon: 106.6297 },
+  { name: 'Hanoi', country: 'VN', lat: 21.0278, lon: 105.8342 },
+  { name: 'Phnom Penh', country: 'KH', lat: 11.5564, lon: 104.9282 },
+  { name: 'Yangon', country: 'MM', lat: 16.8409, lon: 96.1735 },
+  { name: 'Bandar Seri Begawan', country: 'BN', lat: 4.9031, lon: 114.9398 },
+  { name: 'Vientiane', country: 'LA', lat: 17.9757, lon: 102.6331 },
+
+  { name: 'Melbourne', country: 'AU', lat: -37.8136, lon: 144.9631 },
+  { name: 'Brisbane', country: 'AU', lat: -27.4698, lon: 153.0251 },
+  { name: 'Perth', country: 'AU', lat: -31.9505, lon: 115.8605 },
+  { name: 'Auckland', country: 'NZ', lat: -36.8485, lon: 174.7633 },
+  { name: 'Wellington', country: 'NZ', lat: -41.2865, lon: 174.7762 },
+  { name: 'Suva', country: 'FJ', lat: -18.1416, lon: 178.4419 },
+  { name: 'Port Moresby', country: 'PG', lat: -9.4438, lon: 147.1803 }
 ];
 
 // Values needing interpolation (e.g. a city name) are functions, not strings.
@@ -333,6 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
   applyTranslations();
   renderPopularCities();
   requestUserLocation();
+  initExploreMap();
 });
 
 function switchView(view) {
@@ -443,6 +572,8 @@ unitToggle.addEventListener('click', () => {
   } else if (currentCity) {
     fetchWeather(currentCity);
   }
+
+  loadMapMarkers();
 });
 
 function updateUnitToggleText() {
@@ -865,7 +996,15 @@ function saveRecentSearch(cityData) {
     lat: cityData.lat,
     lon: cityData.lon
   });
-  recent = recent.slice(0, 5);
+  recent = recent.slice(0, RECENT_CHIP_LIMIT);
+  localStorage.setItem('recentCities', JSON.stringify(recent));
+  renderRecentSearches();
+}
+
+// Removes one city from the recent-searches chips without touching the
+// full search history log.
+function removeRecentSearch(cityName) {
+  const recent = getRecentCities().filter(c => normalizeForMatch(c.name) !== normalizeForMatch(cityName));
   localStorage.setItem('recentCities', JSON.stringify(recent));
   renderRecentSearches();
 }
@@ -878,11 +1017,14 @@ function renderRecentSearches() {
   }
 
   recentList.innerHTML = recent.map(city => `
-    <span class="recent-item">${escapeHtml(city.name)}</span>
+    <span class="recent-item">
+      <span class="recent-item__label">${escapeHtml(city.name)}</span>
+      <button type="button" class="recent-item__remove" aria-label="Remove ${escapeHtml(city.name)}">×</button>
+    </span>
   `).join('');
 
   recentList.querySelectorAll('.recent-item').forEach((el, i) => {
-    el.addEventListener('click', () => {
+    el.querySelector('.recent-item__label').addEventListener('click', () => {
       const city = recent[i];
       input.value = city.name;
       if (city.lat != null && city.lon != null) {
@@ -894,11 +1036,16 @@ function renderRecentSearches() {
         fetchWeather(city.name);
       }
     });
+
+    el.querySelector('.recent-item__remove').addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeRecentSearch(recent[i].name);
+    });
   });
 }
 
 function renderPopularCities() {
-  popularList.innerHTML = POPULAR_CITIES.map(city => `
+  popularList.innerHTML = POPULAR_CITIES.slice(0, POPULAR_CHIP_LIMIT).map(city => `
     <span class="popular-item" data-city="${city.name}" data-country="${city.country}">${city.name}</span>
   `).join('');
 
@@ -912,6 +1059,260 @@ function renderPopularCities() {
       fetchWeatherByCity(city, country);
     });
   });
+}
+
+// Explore Weather map (Leaflet). Markers cover POPULAR_CITIES plus any
+// city with saved lat/lon in recent searches. Marker weather is fetched
+// lazily per visible viewport and cached in localStorage for 10 minutes,
+// so panning/zooming and repeat visits don't re-hit the API needlessly.
+let exploreMap = null;
+let mapMarkers = new Map();
+let mapHighlightMarker = null;
+
+const MAP_WEATHER_CACHE_KEY = 'mapWeatherCache';
+const MAP_CACHE_TTL_MS = 10 * 60 * 1000;
+
+function initExploreMap() {
+  if (typeof L === 'undefined' || !exploreMapEl) return;
+
+  exploreMap = L.map(exploreMapEl, { scrollWheelZoom: true }).setView([20, 0], 2);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 18
+  }).addTo(exploreMap);
+
+  loadMapMarkers();
+  exploreMap.on('moveend', debounce(() => loadMapMarkers(), 500));
+}
+
+// Popular cities + every searched city in the full history log (not the
+// capped 7-entry "recent" chips — those are a separate, smaller UI list
+// and no longer drive map pins), deduped by name so a popular city that's
+// also been searched doesn't get two pins.
+function getMapCities() {
+  const seen = new Set();
+  const cities = [];
+
+  POPULAR_CITIES.forEach(city => {
+    const key = normalizeForMatch(city.name);
+    if (seen.has(key)) return;
+    seen.add(key);
+    cities.push(city);
+  });
+
+  getSearchHistory().forEach(city => {
+    if (city.lat == null || city.lon == null) return;
+    const key = normalizeForMatch(city.name);
+    if (seen.has(key)) return;
+    seen.add(key);
+    cities.push(city);
+  });
+
+  return cities;
+}
+
+function getMapWeatherCache() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(MAP_WEATHER_CACHE_KEY));
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+function readMapWeatherCache(key) {
+  const entry = getMapWeatherCache()[key];
+  if (!entry || Date.now() - entry.cachedAt > MAP_CACHE_TTL_MS) return null;
+  return entry.data;
+}
+
+function writeMapWeatherCache(key, data) {
+  const cache = getMapWeatherCache();
+  cache[key] = { data, cachedAt: Date.now() };
+  localStorage.setItem(MAP_WEATHER_CACHE_KEY, JSON.stringify(cache));
+}
+
+// Cache key includes the unit so toggling °C/°F doesn't show a stale
+// cached reading in the wrong unit.
+async function fetchMapMarkerWeather(city) {
+  const cacheKey = `${city.lat.toFixed(2)},${city.lon.toFixed(2)}_${currentUnit}`;
+  const cached = readMapWeatherCache(cacheKey);
+  if (cached) return cached;
+
+  const url = `${API_URL}?lat=${city.lat}&lon=${city.lon}&units=${currentUnit}&appid=${API_KEY}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Map marker weather fetch failed');
+
+  const data = await response.json();
+  writeMapWeatherCache(cacheKey, data);
+  return data;
+}
+
+function tempToMarkerColor(tempC) {
+  if (tempC >= 30) return '#e63946';
+  if (tempC >= 20) return '#f4a261';
+  if (tempC >= 10) return '#f4d35e';
+  if (tempC >= 0) return '#4a9fd8';
+  return '#9b5de5';
+}
+
+function buildMarkerIcon(color, emoji) {
+  return L.divIcon({
+    className: 'map-marker',
+    html: `<span class="map-marker__pin" style="background:${color}">${emoji}</span>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 34],
+    popupAnchor: [0, -30]
+  });
+}
+
+function buildMarkerPopup(city, data) {
+  const unitSymbol = currentUnit === 'metric' ? '°C' : '°F';
+  const temp = Math.round(data.main.temp);
+  const emoji = getForecastIcon(data);
+  return `
+    <div class="map-popup">
+      <strong>${escapeHtml(city.name)}</strong>
+      <div class="map-popup__reading">${emoji} ${temp}${unitSymbol}</div>
+    </div>
+  `;
+}
+
+function buildMarkerFallbackPopup(city) {
+  return `
+    <div class="map-popup">
+      <strong>${escapeHtml(city.name)}</strong>
+      <div class="map-popup__reading">⚠️ Weather unavailable</div>
+    </div>
+  `;
+}
+
+function attachMarkerClickHandler(marker, city) {
+  marker.on('click', () => {
+    input.value = city.name;
+    currentCityState = '';
+    recordCitySearch({ name: city.name, country: city.country || '', state: '', lat: city.lat, lon: city.lon });
+    fetchWeatherByCoords(city.lat, city.lon);
+  });
+}
+
+function mapWeatherCacheKey(city) {
+  return `${city.lat.toFixed(2)},${city.lon.toFixed(2)}_${currentUnit}`;
+}
+
+async function renderOneMarker(city) {
+  const key = normalizeForMatch(city.name);
+  let marker = mapMarkers.get(key);
+
+  try {
+    const data = await fetchMapMarkerWeather(city);
+    const tempC = currentUnit === 'metric' ? data.main.temp : (data.main.temp - 32) * 5 / 9;
+    const icon = buildMarkerIcon(tempToMarkerColor(tempC), getForecastIcon(data));
+
+    if (marker) {
+      marker.setIcon(icon);
+      marker.setPopupContent(buildMarkerPopup(city, data));
+    } else {
+      marker = L.marker([city.lat, city.lon], { icon }).addTo(exploreMap);
+      marker.bindPopup(buildMarkerPopup(city, data));
+      attachMarkerClickHandler(marker, city);
+      mapMarkers.set(key, marker);
+    }
+  } catch {
+    const icon = buildMarkerIcon('#7a7a8a', '⚠️');
+    if (marker) {
+      marker.setIcon(icon);
+      marker.setPopupContent(buildMarkerFallbackPopup(city));
+    } else {
+      marker = L.marker([city.lat, city.lon], { icon }).addTo(exploreMap);
+      marker.bindPopup(buildMarkerFallbackPopup(city));
+      attachMarkerClickHandler(marker, city);
+      mapMarkers.set(key, marker);
+    }
+  }
+}
+
+// The curated city list is large enough (100+) that fetching it all at
+// once on first load would blow past OpenWeatherMap's free-tier rate
+// limit. Cached markers (already fetched within MAP_CACHE_TTL_MS) render
+// immediately in parallel; anything new is throttled in small batches
+// with a pause between them so sustained request volume stays well under
+// the 60-calls/minute cap, leaving headroom for the user's own searches.
+const MAP_FETCH_BATCH_SIZE = 4;
+const MAP_FETCH_BATCH_DELAY_MS = 5000;
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Deliberately not filtered to the current viewport: with 100+ curated
+// cities and a narrow app-width map (not a full-page map), zoom 2 only
+// shows a fraction of the world's longitude at a time, so viewport-only
+// fetching would leave most pins never loaded until manually panned to.
+// Every city gets a pin; the batching above is what protects the rate
+// limit instead. Still called on moveend (debounced) so a newly recorded
+// recent search — added after a search-triggered flyTo — gets its pin.
+async function loadMapMarkers() {
+  if (!exploreMap) return;
+
+  const cities = getMapCities();
+  if (cities.length === 0) return;
+
+  const cached = cities.filter(city => readMapWeatherCache(mapWeatherCacheKey(city)));
+  const uncached = cities.filter(city => !readMapWeatherCache(mapWeatherCacheKey(city)));
+
+  await Promise.all(cached.map(renderOneMarker));
+
+  if (uncached.length === 0) return;
+  exploreMapLoading.classList.remove('hidden');
+
+  for (let i = 0; i < uncached.length; i += MAP_FETCH_BATCH_SIZE) {
+    const batch = uncached.slice(i, i + MAP_FETCH_BATCH_SIZE);
+    await Promise.all(batch.map(renderOneMarker));
+    if (i + MAP_FETCH_BATCH_SIZE < uncached.length) await wait(MAP_FETCH_BATCH_DELAY_MS);
+  }
+
+  exploreMapLoading.classList.add('hidden');
+}
+
+// Called when the history log is cleared: since history is now the only
+// source of non-popular pins, wiping it should wipe those pins from the
+// live map too — POPULAR_CITIES markers are left alone.
+function clearNonPopularMapMarkers() {
+  if (!exploreMap) return;
+
+  const popularKeys = new Set(POPULAR_CITIES.map(city => normalizeForMatch(city.name)));
+  mapMarkers.forEach((marker, key) => {
+    if (popularKeys.has(key)) return;
+    exploreMap.removeLayer(marker);
+    mapMarkers.delete(key);
+  });
+}
+
+// Flies to a searched/clicked city and drops a brief pulse ring on it —
+// covers both the "search bar" and "map marker click" entry points since
+// both funnel through renderWeather().
+function panMapToCity(lat, lon) {
+  if (!exploreMap) return;
+
+  exploreMap.flyTo([lat, lon], Math.max(exploreMap.getZoom(), 5), { duration: 1.2 });
+
+  if (mapHighlightMarker) exploreMap.removeLayer(mapHighlightMarker);
+  const icon = L.divIcon({
+    className: 'map-highlight',
+    html: '<span class="map-highlight__ring"></span>',
+    iconSize: [46, 46],
+    iconAnchor: [23, 23]
+  });
+  mapHighlightMarker = L.marker([lat, lon], { icon, interactive: false, zIndexOffset: 1000 }).addTo(exploreMap);
+
+  setTimeout(() => {
+    if (mapHighlightMarker) {
+      exploreMap.removeLayer(mapHighlightMarker);
+      mapHighlightMarker = null;
+    }
+  }, 2000);
 }
 
 // Search History (full log, unlike the capped 5-entry "recent" chips above)
@@ -1013,7 +1414,10 @@ clearHistoryBtn.addEventListener('click', () => {
   if (getSearchHistory().length === 0) return;
   if (!window.confirm(t('clearHistoryConfirm'))) return;
   localStorage.removeItem(HISTORY_KEY);
+  localStorage.removeItem('recentCities');
   renderHistory();
+  renderRecentSearches();
+  clearNonPopularMapMarkers();
 });
 
 // Uses the API's own timezone offset, independent of the browser's local time.
@@ -1070,7 +1474,8 @@ function renderWeather(data) {
     lon: data.coord.lon
   };
 
-  applyWeatherTheme(resolveWeatherTheme(data));
+  applyWeatherTheme(resolveWeatherTheme(data), data.weather[0].icon.endsWith('n'));
+  panMapToCity(data.coord.lat, data.coord.lon);
 }
 
 const ATMOSPHERE_CONDITIONS = ['Mist', 'Smoke', 'Haze', 'Dust', 'Fog', 'Sand', 'Ash', 'Squall', 'Tornado'];
@@ -1095,7 +1500,7 @@ function resolveWeatherTheme(data) {
 }
 
 // Crossfades by fading in the hidden layer and fading out the visible one.
-function applyWeatherTheme(themeKey) {
+function applyWeatherTheme(themeKey, isNight) {
   const incoming = activeBgLayer === 'a' ? bgLayerB : bgLayerA;
   const outgoing = activeBgLayer === 'a' ? bgLayerA : bgLayerB;
 
@@ -1107,19 +1512,71 @@ function applyWeatherTheme(themeKey) {
   });
 
   activeBgLayer = activeBgLayer === 'a' ? 'b' : 'a';
-  renderWeatherEffects(themeKey);
+  renderWeatherEffects(themeKey, isNight);
 }
 
 function clearWeatherEffects() {
   weatherEffects.innerHTML = '';
 }
 
+// Builds the sun or moon: a beam/crater ring plus a solid disc on top, all
+// anchored to the fixed .celestial spot (see CSS) so both bodies share the
+// same "rises in the upper right" position.
+function buildCelestialBody(kind) {
+  const wrap = document.createElement('div');
+  wrap.className = `celestial celestial--${kind}`;
+
+  if (kind === 'sun') {
+    // Beams go in first so the disc, appended last, paints over their
+    // bases and only their outer tips show past the edge.
+    const lengths = [70, 52, 70, 52, 70, 52, 70, 52, 70, 52, 70, 52];
+    lengths.forEach((length, i) => {
+      const beam = document.createElement('span');
+      beam.className = 'sun-beam';
+      beam.style.height = `${length}px`;
+      beam.style.transform = `rotate(${i * 30}deg)`;
+      beam.style.animationDelay = `${i * 0.15}s`;
+      wrap.appendChild(beam);
+    });
+
+    const core = document.createElement('div');
+    core.className = 'sun-core';
+    wrap.appendChild(core);
+  } else {
+    const core = document.createElement('div');
+    core.className = 'moon-core';
+
+    [
+      { top: '18%', left: '26%', size: 16 },
+      { top: '52%', left: '58%', size: 22 },
+      { top: '72%', left: '24%', size: 11 },
+    ].forEach(({ top, left, size }) => {
+      const crater = document.createElement('span');
+      crater.className = 'moon-crater';
+      crater.style.top = top;
+      crater.style.left = left;
+      crater.style.width = `${size}px`;
+      crater.style.height = `${size}px`;
+      core.appendChild(crater);
+    });
+
+    wrap.appendChild(core);
+  }
+
+  return wrap;
+}
+
 // Subtle floating particles for a few themes; other themes stay clean.
-function renderWeatherEffects(themeKey) {
+function renderWeatherEffects(themeKey, isNight) {
   clearWeatherEffects();
   // Built off-DOM and attached with one appendChild instead of one
   // insertion per particle (up to 70 for the night theme).
   const fragment = document.createDocumentFragment();
+
+  // Every city gets a sun or moon based on its own local time, regardless
+  // of weather condition — added first so rain/snow/clouds drift in front
+  // of it rather than the other way around.
+  fragment.appendChild(buildCelestialBody(isNight ? 'moon' : 'sun'));
 
   if (themeKey === 'snow') {
     for (let i = 0; i < 40; i++) {
@@ -1141,14 +1598,6 @@ function renderWeatherEffects(themeKey) {
       drop.style.animationDuration = `${0.6 + Math.random() * 0.5}s`;
       drop.style.animationDelay = `${-Math.random() * 2}s`;
       fragment.appendChild(drop);
-    }
-  } else if (themeKey === 'clear') {
-    for (let i = 0; i < 8; i++) {
-      const ray = document.createElement('span');
-      ray.className = 'sun-ray';
-      ray.style.transform = `rotate(${i * (360 / 8)}deg)`;
-      ray.style.animationDelay = `${i * 0.2}s`;
-      fragment.appendChild(ray);
     }
   } else if (themeKey === 'hot') {
     for (let i = 0; i < 16; i++) {
@@ -1178,6 +1627,9 @@ function renderWeatherEffects(themeKey) {
       fragment.appendChild(star);
     }
   } else if (themeKey === 'clouds') {
+    // Clouds are appended after the sun/moon added above, so they drift in
+    // front of it — combined with the clouds' own translucency, that's
+    // what makes a passing cloud look like it's filtering the sunlight.
     for (let i = 0; i < 5; i++) {
       const cloud = document.createElement('span');
       cloud.className = 'drift-cloud';
