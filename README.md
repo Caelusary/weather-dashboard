@@ -6,11 +6,11 @@ A simple weather dashboard that lets you search for a city and see its current t
 
 - Search bar to look up weather by city name
 - Displays temperature, weather condition, humidity, and "feels like" temperature
-- 5-day forecast card row below the current weather, showing each day's name, icon, condition, and high/low temperature in your selected unit
+- 5-day forecast card row below the current weather, showing each day's name, a condition emoji (rain gets its own 🌧️ icon rather than a generic cloud), description, and high/low temperature in your selected unit
 - Location-aware search: with your permission, sorts city matches and autocomplete suggestions by distance from you, closest first (falls back to the default order if location access is denied or unavailable)
 - Autocomplete suggestions highlight and prioritize cities you've searched before
 - Dedicated History tab: a full, timestamped log of every search, with filtering, per-entry delete, "Clear All" (with confirmation), and click-to-reload
-- Multi-language UI: English, Spanish, Chinese (Simplified), Hindi, and Arabic, with weather condition text translated too; your choice is remembered
+- Multi-language UI: English, Spanish, Chinese (Simplified), Hindi, and Arabic, with weather condition text translated too; your choice is remembered. The layout stays left-to-right in every language (including Arabic) — only the text translates, so switching languages never flips the page
 - Modern UI with a gradient background, glassmorphism card, and weather-based animated backgrounds (rain, snow, embers, drifting clouds, etc.)
 - Error handling for invalid city names and API issues
 
