@@ -405,9 +405,18 @@ function renderPopularCities() {
   });
 }
 
+// Determines day vs. night in the city's own local time, using the
+// timezone offset (seconds from UTC) the weather API returns alongside the
+// current UTC timestamp `dt` — independent of the browser's local time.
+function isDaytimeAt(data) {
+  const localHour = new Date((data.dt + data.timezone) * 1000).getUTCHours();
+  return localHour >= 6 && localHour < 20;
+}
+
 // Render Weather
 function renderWeather(data) {
-  cityName.textContent = `${data.name}, ${data.sys.country}`;
+  const dayNightIcon = isDaytimeAt(data) ? '☀️' : '🌙';
+  cityName.textContent = `${dayNightIcon} ${data.name}, ${data.sys.country}`;
   condition.textContent = data.weather[0].description;
 
   const temp = Math.round(data.main.temp);
