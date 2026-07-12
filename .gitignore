@@ -3,6 +3,7 @@ config.js
 # IDE
 .idea/
 .vscode/
+.claude/
 
 # OS junk
 .DS_Store
