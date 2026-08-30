@@ -344,8 +344,27 @@ document.addEventListener('DOMContentLoaded', () => {
   applyTranslations();
   renderPopularCities();
   requestUserLocation();
-  initExploreMap();
+  deferExploreMapInit();
 });
+
+// The map does a Leaflet render plus up to 10 weather fetches (see
+// loadMapMarkers) — deferring init until the section is actually about to
+// scroll into view keeps that work off the critical path for the common
+// case of just checking one city's weather.
+function deferExploreMapInit() {
+  if (!exploreMapEl || typeof IntersectionObserver === 'undefined') {
+    initExploreMap();
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    if (!entries.some(entry => entry.isIntersecting)) return;
+    observer.disconnect();
+    initExploreMap();
+  }, { rootMargin: '200px' });
+
+  observer.observe(exploreMapEl);
+}
 
 function switchView(view) {
   const isWeather = view === 'weather';
