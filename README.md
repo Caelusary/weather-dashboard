@@ -42,6 +42,24 @@ Click a chip under **Recent** or **🌍 Popular Cities** to reload that city's w
 
 Switch to the **History** tab to see every past search with its timestamp, filter it by city, delete individual entries, clear it all, or click an entry to reload that city's weather. Use the language dropdown in the header to switch the UI (and weather condition text) between English, Spanish, Chinese, Hindi, and Arabic — your choice is saved for next time.
 
+## Notable decisions
+
+- **Stale responses can't clobber a newer search.** Each search mints a `requestId`; if a slower, older fetch resolves after a newer one has already started, its result is dropped instead of overwriting the UI ([script.js:61-63](script.js#L61-L63), [script.js:520-522](script.js#L520-L522)).
+- **Popular-city name matches are disambiguated by rank, not just distance.** A plain query like "Dubai" is checked against the curated `POPULAR_CITIES` list first so it resolves to the well-known city rather than an obscure same-named town the geocoding API also returns ([script.js:436-444](script.js#L436-L444)).
+- **Arabic stays left-to-right on purpose.** The UI translates Arabic text but doesn't mirror the layout — the icons and controls weren't built for RTL, so flipping `dir` would look like a broken layout rather than a localized one ([script.js:303-305](script.js#L303-L305)).
+- **The Explore Weather map is throttled, not viewport-filtered.** Every city in your history gets a pin (not just what's currently panned into view — at zoom 2 that'd leave most pins never loaded), so instead the map fetches cached pins immediately and batches everything else in small groups with a pause between batches to stay under OpenWeatherMap's free-tier rate limit ([script.js:1139-1155](script.js#L1139-L1155)). Its Leaflet init and first fetch batch are also deferred behind an `IntersectionObserver` so a page load that never scrolls that far skips the cost entirely ([script.js:350-364](script.js#L350-L364)).
+- **Marker weather is cached per unit.** The cache key includes °C/°F so toggling units can't show a stale reading fetched in the other unit ([script.js:1039-1040](script.js#L1039-L1040)).
+- **Geocoding results are HTML-escaped before rendering.** City/state/country names come from OpenWeatherMap's geocoding endpoint, which is backed by community-editable place data — it's treated as untrusted before going into `innerHTML` ([script.js:424-426](script.js#L424-L426)).
+- **The production API key never touches the repo.** Locally it lives in gitignored `config.js`; in CI, the GitHub Pages deploy workflow generates `config.js` from a repository secret at build time ([.github/workflows/deploy.yml:26-27](.github/workflows/deploy.yml#L26-L27)).
+
+## Known limitations
+
+- The API key still ends up in the deployed static files — there's no backend to keep it server-side, so anyone can read it via view-source on the live site. Acceptable for a free-tier hobby key, not for anything higher-stakes.
+- No automated tests.
+- All state — recent searches, full history, unit/language prefs, map weather cache — lives in `localStorage`. Nothing syncs across browsers or devices, and clearing site data wipes it.
+- Map tiles are fetched straight from OpenStreetMap's public tile server with no fallback if it's slow or unreachable.
+- A search history large enough to add many uncached map pins means the first Explore Weather load after that still takes several batched round-trips (see Notable Decisions) before every pin resolves.
+
 ## Files
 
 - `index.html` – page structure and markup
