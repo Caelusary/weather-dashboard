@@ -77,7 +77,7 @@ body {
   max-width: 480px;
   padding: 2.5rem;
   margin: 1rem;
-  background: rgba(15, 15, 35, 0.32);
+  background: rgba(15, 15, 35, 0.68);
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: var(--radius-2xl);
   backdrop-filter: blur(16px);
@@ -809,10 +809,8 @@ body {
 
 .popular-cities {
   margin-top: 2rem;
-  padding: 1.5rem;
-  background: var(--surface-10);
-  border-radius: var(--radius-md);
-  backdrop-filter: blur(4px);
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--surface-20);
 }
 
 .popular-cities h3 {
@@ -846,10 +844,8 @@ body {
 
 .explore-map {
   margin-top: 2rem;
-  padding: 1.5rem;
-  background: var(--surface-10);
-  border-radius: var(--radius-md);
-  backdrop-filter: blur(4px);
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--surface-20);
 }
 
 .explore-map h3 {
@@ -1073,7 +1069,8 @@ body {
   }
 
   .unit-toggle {
-    width: 100%;
+    flex: 1;
+    width: auto;
   }
 
   .language-select {
