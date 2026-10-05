@@ -7,7 +7,7 @@ import { SquaresFour } from '@phosphor-icons/react/dist/csr/SquaresFour';
 import { SunHorizon } from '@phosphor-icons/react/dist/csr/SunHorizon';
 import { Thermometer } from '@phosphor-icons/react/dist/csr/Thermometer';
 import { Wind } from '@phosphor-icons/react/dist/csr/Wind';
-import InfoPopover from '../../components/InfoPopover';
+import InfoDialog from '../../components/InfoDialog';
 import {
   cloudsKey,
   daylight,
@@ -29,12 +29,12 @@ import { useSettings } from '../../providers/settingsContext';
 function Stat({ Icon, label, value, definition, reading, scale }) {
   const { t } = useSettings();
   return (
-    <div className="py-4">
-      <dt className="flex items-center gap-2 text-sm font-medium text-fg-muted">
+    <div className="py-4 text-center">
+      <dt className="flex items-center justify-center gap-2 text-sm font-medium text-fg-muted">
         <Icon size={16} weight="bold" aria-hidden className="shrink-0" />
         {label}
         <span className="-my-2 -ms-1 -me-2">
-          <InfoPopover title={label}>
+          <InfoDialog title={label} Icon={Icon}>
             <p>{definition}</p>
             <div className="mt-3 rounded-xl bg-white/6 p-3">
               <span className="inline-block rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-fg tabular-nums">
@@ -43,7 +43,7 @@ function Stat({ Icon, label, value, definition, reading, scale }) {
               <p className="mt-2 text-fg">{reading}</p>
             </div>
             {scale && <p className="mt-3 text-xs text-fg-subtle">{scale}</p>}
-          </InfoPopover>
+          </InfoDialog>
         </span>
       </dt>
       <dd className="mt-1 text-2xl font-semibold tabular-nums">{value}</dd>
@@ -71,11 +71,14 @@ export default function Details({ data }) {
 
   return (
     <section aria-labelledby="details-heading" className="glass rounded-[1.25rem] p-6 sm:p-8">
-      <h2 id="details-heading" className="flex items-center gap-2 text-sm font-semibold text-fg-muted">
-        <SquaresFour size={16} weight="bold" aria-hidden />
+      <h2
+        id="details-heading"
+        className="-mx-6 flex items-center justify-center gap-2.5 border-b border-white/10 px-6 pb-5 text-2xl font-semibold tracking-tight text-fg sm:-mx-8 sm:px-8 sm:pb-6 sm:text-[1.75rem]"
+      >
+        <SquaresFour size={26} weight="duotone" aria-hidden className="text-accent" />
         {t('detailsTitle')}
       </h2>
-      <dl className="mt-2 grid grid-cols-2 gap-x-4 sm:grid-cols-4 sm:gap-x-8 [&>div]:border-b [&>div]:border-white/10 [&>div:nth-last-child(-n+2)]:border-b-0 sm:[&>div:nth-last-child(-n+4)]:border-b-0">
+      <dl className="mt-4 grid grid-cols-2 gap-x-4 sm:grid-cols-4 sm:gap-x-8 [&>div]:border-b [&>div]:border-white/10 [&>div:nth-last-child(-n+2)]:border-b-0 sm:[&>div:nth-last-child(-n+4)]:border-b-0">
         <Stat
           Icon={Thermometer}
           label={t('feelsLikeLabel')}
