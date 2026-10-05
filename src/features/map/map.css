@@ -1,0 +1,203 @@
+/* Leaflet ships light-theme chrome. Everything here reskins it with the app's ink tokens
+   (#0d1428 surface, #f5f8ff text, #7dd3fc accent) so the dark tiles, controls and popups read as
+   one surface. Selectors are scoped under .explore-map where they would otherwise leak. */
+
+.explore-map.leaflet-container {
+  /* Visible while tiles load, instead of Leaflet's default light grey flash. */
+  background: #0d1428;
+  font-family: inherit;
+  outline-offset: -3px;
+}
+
+.explore-map.leaflet-container:focus-visible {
+  outline: 2px solid #7dd3fc;
+}
+
+/* OpenStreetMap only ships light tiles (the dark CARTO sets now need an API key), so darken them
+   in the browser: invert, then rotate hue back so water stays blue-ish and land stays neutral. */
+.explore-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(1.1) contrast(1) saturate(0.7);
+}
+
+/* Loading chip, positioned over the map by ExploreMap's wrapper. */
+.map-loading {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 1100;
+  margin: 0;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 999px;
+  background: rgb(13 20 40 / 0.92);
+  color: #f5f8ff;
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+
+/* Pins */
+.map-marker {
+  background: none;
+  border: none;
+}
+
+.map-marker:focus-visible {
+  outline: none;
+}
+
+.map-marker__pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50% 50% 50% 0;
+  /* Rotated square with one square corner reads as a teardrop; the glyph is counter-rotated below. */
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.45);
+  border: 2px solid rgb(255 255 255 / 0.9);
+}
+
+.map-marker:focus-visible .map-marker__pin {
+  outline: 3px solid #7dd3fc;
+  outline-offset: 2px;
+}
+
+.map-marker__pin > * {
+  transform: rotate(45deg);
+}
+
+/* Focus highlight ring */
+.map-highlight {
+  background: none;
+  border: none;
+}
+
+.map-highlight__ring {
+  display: block;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 3px solid #7dd3fc;
+  animation: map-pulse 1s ease-out 2;
+}
+
+@keyframes map-pulse {
+  0% {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-highlight__ring {
+    animation: none;
+  }
+}
+
+/* Popup */
+.explore-map .leaflet-popup-content-wrapper,
+.explore-map .leaflet-popup-tip {
+  background: #0d1428;
+  color: #f5f8ff;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+}
+
+.explore-map .leaflet-popup-content-wrapper {
+  border-radius: 0.75rem;
+}
+
+.explore-map .leaflet-popup-content {
+  margin: 0.75rem 1rem;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.explore-map .leaflet-popup-close-button {
+  color: #cdd6ec;
+}
+
+.explore-map .leaflet-popup-close-button:hover,
+.explore-map .leaflet-popup-close-button:focus-visible {
+  color: #7dd3fc;
+}
+
+.map-popup__title {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.map-popup__reading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0.65rem;
+  font-size: 0.85rem;
+  color: #cdd6ec;
+}
+
+.map-popup__icon {
+  flex-shrink: 0;
+  color: #7dd3fc;
+}
+
+.map-popup__action {
+  width: 100%;
+  padding: 0.4rem 0.75rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: #7dd3fc;
+  color: #062031;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.map-popup__action:hover {
+  background: #a5e1fd;
+}
+
+.map-popup__action:focus-visible {
+  outline: 2px solid #f5f8ff;
+  outline-offset: 2px;
+}
+
+/* Zoom control */
+.explore-map .leaflet-bar {
+  border: 1px solid rgb(255 255 255 / 0.12);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.4);
+}
+
+.explore-map .leaflet-bar a {
+  background: #0d1428;
+  color: #f5f8ff;
+  border-bottom-color: rgb(255 255 255 / 0.12);
+}
+
+.explore-map .leaflet-bar a:hover,
+.explore-map .leaflet-bar a:focus-visible {
+  background: #162039;
+  color: #7dd3fc;
+}
+
+.explore-map .leaflet-bar a.leaflet-disabled {
+  background: #0d1428;
+  color: #5b6a8f;
+}
+
+/* Attribution */
+.explore-map .leaflet-control-attribution {
+  background: rgb(13 20 40 / 0.85);
+  color: #a9b6d6;
+}
+
+.explore-map .leaflet-control-attribution a {
+  color: #7dd3fc;
+}
