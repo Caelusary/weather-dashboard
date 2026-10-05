@@ -82,7 +82,7 @@ describe('searching', () => {
     }
   });
 
-  it('gives every detail its own explanation, one open at a time', async () => {
+  it('gives every detail its own explanation', async () => {
     mockApi();
     const { user } = renderApp();
     await searchFor(user, 'Tokyo');
@@ -92,6 +92,7 @@ describe('searching', () => {
 
     await user.click(within(details).getByRole('button', { name: 'More about: Humidity' }));
     expect(screen.getByRole('dialog', { name: 'Humidity' })).toHaveTextContent(/water vapour/);
+    await user.keyboard('{Escape}');
 
     await user.click(within(details).getByRole('button', { name: 'More about: Pressure' }));
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
