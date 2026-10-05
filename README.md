@@ -1,70 +1,74 @@
-# Weather Dashboard
+# Cloudbase
 
-A weather dashboard that lets you search any city and see its current conditions, a 5-day forecast, and an interactive world map of live weather — all with animated, time-of-day-aware backgrounds. Built with plain HTML, CSS, and JavaScript, using the OpenWeatherMap API and Leaflet/OpenStreetMap for the map.
+A weather app: current conditions, a five day forecast, a world map of live conditions and a search history, in five languages. Built with React 19, Vite, Tailwind CSS 4, TanStack Query and Leaflet. There is no backend: the browser calls the OpenWeatherMap API directly, so the whole app is static files.
 
-## Features
+## Running locally
 
-- Search bar to look up weather by city name, with autocomplete suggestions that highlight and prioritize cities you've searched before
-- Current weather card: temperature, condition, humidity, "feels like" temperature, local date/time, and a day/night indicator for the searched city
-- °C/°F unit toggle
-- 5-day forecast row below the current weather, showing each day's name, a condition emoji (rain gets its own 🌧️ icon rather than a generic cloud), description, and high/low temperature in your selected unit
-- Location-aware search: with your permission, sorts city matches and autocomplete suggestions by distance from you, closest first (falls back to the default order if location access is denied or unavailable)
-- Recent Searches chips: your last 7 searched cities, one click to reload, each individually removable with an ×
-- Popular Cities chips: 10 major world cities, one click to load their weather
-- **Explore Weather map**: an interactive Leaflet/OpenStreetMap world map with a pin for each of the 10 Popular Cities plus every city in your full search history (not just the 7 recent chips) — pins are color-coded by temperature (red/orange/yellow/blue/purple) and show a weather emoji; click any pin to load that city's weather. Searching a city flies the map to it with a highlight pulse. Marker weather is cached for 10 minutes and fetched in throttled batches to stay within the free API's rate limit
-- Dedicated History tab: a full, timestamped log of every search, with filtering, per-entry delete, and "Clear All" (with confirmation) — clearing history also removes the map pins it added, but the 10 Popular Cities pins always stay
-- Animated, weather-and-time-aware background: gradient + particle effects that match the actual condition (rain, snow, thunderstorm, fog, heat shimmer, drifting clouds) for the searched city. A sun or moon rises in the upper right based on that city's real local time, regardless of weather condition; clouds drift translucently in front of the sun
-- Multi-language UI: English, Spanish, Chinese (Simplified), Hindi, and Arabic, with weather condition text translated too; your choice is remembered. The layout stays left-to-right in every language (including Arabic) — only the text translates, so switching languages never flips the page
-- Modern UI with a gradient background and glassmorphism cards throughout
-- Error handling for invalid city names and API issues
+You need Node 20.19 or newer (`.nvmrc` pins 22) and a free [OpenWeatherMap API key](https://openweathermap.org/api).
 
-## Setup
+```bash
+npm install
+```
 
-1. Get a free API key from [OpenWeatherMap](https://openweathermap.org/api).
-2. Copy `config.example.js` to `config.js`:
-   ```
-   cp config.example.js config.js
-   ```
-3. Open `config.js` and set your key:
-   ```js
-   const API_KEY = 'YOUR_OPENWEATHERMAP_API_KEY';
-   ```
-   `config.js` is gitignored, so your key stays local and is never committed.
-4. Open `index.html` in your browser (or serve the folder with a local dev server). Leaflet's JS/CSS load from a CDN, so no build step or package install is needed.
+```bash
+cp .env.example .env.local
+```
 
-## Usage
+Set `VITE_OPENWEATHER_API_KEY` in `.env.local` (it is gitignored), then:
 
-Type a city name into the search bar and press **Search** (or hit Enter). The dashboard will display the current weather for that city, along with a 5-day forecast underneath (scroll the forecast row horizontally on smaller screens), or show an error message if the city can't be found. Use the unit toggle in the header to switch between °C and °F.
+```bash
+npm run dev
+```
 
-If you allow location access when prompted, ambiguous searches (city selection list and autocomplete suggestions) are sorted by distance from your current location, closest first. Denying or ignoring the prompt has no effect on functionality — results just aren't distance-sorted.
+| Script            | What it does                                               |
+| ----------------- | ---------------------------------------------------------- |
+| `npm run dev`     | Vite dev server with hot reload                            |
+| `npm run build`   | Production build into `dist/`                              |
+| `npm run preview` | Serves the production build locally                        |
+| `npm test`        | Runs the Vitest suite once (`npm run test:watch` to watch) |
+| `npm run lint`    | ESLint over the whole project                              |
+| `npm run format`  | Prettier over the whole project                            |
 
-Click a chip under **Recent** or **🌍 Popular Cities** to reload that city's weather instantly; remove a recent chip with its ×. Scroll down to **🌍 Explore Weather** to browse a world map of pins — click any pin for a quick reading and click again (or click through) to load it as your current search; the map flies to and highlights whatever city you search from the main bar.
+## What is in it
 
-Switch to the **History** tab to see every past search with its timestamp, filter it by city, delete individual entries, clear it all, or click an entry to reload that city's weather. Use the language dropdown in the header to switch the UI (and weather condition text) between English, Spanish, Chinese, Hindi, and Arabic — your choice is saved for next time.
+The active view lives in the URL hash, so each one is linkable and works on a static host.
+
+| View    | Hash        | Contents                                                                                                                                                                                                                                                                      |
+| ------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Weather | `#/`        | The current reading set directly on the animated sky, advice, a five day forecast (today plus four days, each with a labelled high and low) and a details panel. The forecast and every individual detail have an (i) button that explains, in plain language, what the number means, what today's value implies and a practical tip. Focusing the search box offers recent and popular cities |
+| Explore | `#/explore` | Leaflet map with a temperature-coloured pin for every popular city and every city in your history                                                                                                                                                                             |
+| History | `#/history` | Timestamped log of searches with filtering, per-entry delete and a confirmed clear-all                                                                                                                                                                                        |
+
+The °C/°F toggle, the language (English, Spanish, Chinese, Hindi, Arabic) and the last city you looked at are remembered in `localStorage`. The background is a weather and time-of-day scene (rain, snow, fog, heat, stars, a sun or moon) driven by the city's real local time.
+
+Pure logic lives in [src/lib](src/lib) and is covered by tests. Each feature owns its components and hooks under [src/features](src/features); shared state (settings, search history) sits in [src/providers](src/providers).
 
 ## Notable decisions
 
-- **Stale responses can't clobber a newer search.** Each search mints a `requestId`; if a slower, older fetch resolves after a newer one has already started, its result is dropped instead of overwriting the UI ([script.js:61-63](script.js#L61-L63), [script.js:520-522](script.js#L520-L522)).
-- **Popular-city name matches are disambiguated by rank, not just distance.** A plain query like "Dubai" is checked against the curated `POPULAR_CITIES` list first so it resolves to the well-known city rather than an obscure same-named town the geocoding API also returns ([script.js:436-444](script.js#L436-L444)).
-- **Arabic stays left-to-right on purpose.** The UI translates Arabic text but doesn't mirror the layout — the icons and controls weren't built for RTL, so flipping `dir` would look like a broken layout rather than a localized one ([script.js:303-305](script.js#L303-L305)).
-- **The Explore Weather map is throttled, not viewport-filtered.** Every city in your history gets a pin (not just what's currently panned into view — at zoom 2 that'd leave most pins never loaded), so instead the map fetches cached pins immediately and batches everything else in small groups with a pause between batches to stay under OpenWeatherMap's free-tier rate limit ([script.js:1139-1155](script.js#L1139-L1155)). Its Leaflet init and first fetch batch are also deferred behind an `IntersectionObserver` so a page load that never scrolls that far skips the cost entirely ([script.js:350-364](script.js#L350-L364)).
-- **Marker weather is cached per unit.** The cache key includes °C/°F so toggling units can't show a stale reading fetched in the other unit ([script.js:1039-1040](script.js#L1039-L1040)).
-- **Geocoding results are HTML-escaped before rendering.** City/state/country names come from OpenWeatherMap's geocoding endpoint, which is backed by community-editable place data — it's treated as untrusted before going into `innerHTML` ([script.js:424-426](script.js#L424-L426)).
-- **The production API key never touches the repo.** Locally it lives in gitignored `config.js`; in CI, the GitHub Pages deploy workflow generates `config.js` from a repository secret at build time ([.github/workflows/deploy.yml:26-27](.github/workflows/deploy.yml#L26-L27)).
+- **The API is always queried in metric and converted for display.** Switching °C/°F, mph/km/h or miles/km never refetches and never shows a stale value, and one cached response serves both units ([src/lib/api.js:30](src/lib/api.js#L30), [src/lib/units.js](src/lib/units.js)).
+- **The card shows the city you picked, not the station the API names.** OpenWeatherMap resolves coordinates to the nearest weather station, so Tokyo's coordinates come back labelled "Horinouchi" ([src/features/weather/Hero.jsx:26](src/features/weather/Hero.jsx#L26)).
+- **A newer search always wins.** Each search aborts the previous one, so a slow stale response can never replace a newer result ([src/features/search/useCitySearch.js:36](src/features/search/useCitySearch.js#L36)).
+- **Day or night comes from the API's sunrise and sunset**, with a fixed 06:00 to 20:00 window as the fallback, and every clock time is read in the city's own timezone rather than the browser's ([src/lib/weather.js:12](src/lib/weather.js#L12)).
+- **The map is throttled, cached and loaded on demand.** Leaflet is a separate chunk fetched only when you open Explore ([src/features/explore/ExploreView.jsx:8](src/features/explore/ExploreView.jsx#L8)). Pins load in batches of four with a pause between batches, and results are cached for ten minutes, to stay under the free tier's 60 calls per minute ([src/features/map/mapWeather.js:14](src/features/map/mapWeather.js#L14)).
+- **Location is requested on first use of the search box, not on page load**, so the permission prompt appears when the reason for it is obvious. Without it, results simply are not sorted by distance ([src/hooks/useUserCoords.js](src/hooks/useUserCoords.js)).
+- **Arabic stays left-to-right.** The UI translates text but does not mirror the layout, so switching language never flips the page ([src/providers/SettingsProvider.jsx:29](src/providers/SettingsProvider.jsx#L29)).
+- **OpenStreetMap tiles are darkened with a CSS filter.** The dark CARTO tile sets now require an API key, so the map uses the plain OpenStreetMap tiles inverted in the browser ([src/features/map/map.css:19](src/features/map/map.css#L19)).
+- **Stored data is treated as untrusted.** Search history, recent chips and the last city are rebuilt field by field when read back (known keys only, strict types, capped length, range-checked coordinates), so a corrupted or hand-edited `localStorage` cannot crash a render ([src/lib/storage.js](src/lib/storage.js)). Production builds also carry a Content-Security-Policy that allows only this origin, the OpenWeatherMap API and OpenStreetMap tiles ([vite.config.js:20](vite.config.js#L20)).
+- **Phones get their own layout.** A bottom tab bar, a compact language picker and stacked weather details replace the desktop header and two-column grid.
+
+## Deployment
+
+Pushing to `main` runs [.github/workflows/deploy.yml](.github/workflows/deploy.yml): install, lint, test, build, then publish `dist/` to GitHub Pages. The repository secret `OPENWEATHER_API_KEY` is passed to the build as `VITE_OPENWEATHER_API_KEY`. Pull requests run [.github/workflows/ci.yml](.github/workflows/ci.yml), which does the same checks without deploying.
+
+## Tests
+
+`npm test` runs 182 tests across 13 files. They cover the pure logic (city ranking, day grouping for the forecast, unit conversion, storage migration and caps, the suggestion and theme rules), the search hook including aborted requests, the map's cache and batching, the background particle generators, and the main user journeys with the network stubbed.
 
 ## Known limitations
 
-- The API key still ends up in the deployed static files — there's no backend to keep it server-side, so anyone can read it via view-source on the live site. Acceptable for a free-tier hobby key, not for anything higher-stakes.
-- No automated tests.
-- All state — recent searches, full history, unit/language prefs, map weather cache — lives in `localStorage`. Nothing syncs across browsers or devices, and clearing site data wipes it.
-- Map tiles are fetched straight from OpenStreetMap's public tile server with no fallback if it's slow or unreachable.
-- A search history large enough to add many uncached map pins means the first Explore Weather load after that still takes several batched round-trips (see Notable Decisions) before every pin resolves.
-
-## Files
-
-- `index.html` – page structure and markup
-- `style.css` – styling, layout, gradient theme, and weather/map visual effects
-- `script.js` – search handling, API calls, history/recents, the Explore Weather map, and background effects
-- `config.example.js` – template for your API key config (copy to `config.js`)
-- `config.js` – your actual API key (gitignored, not committed)
-- `README.md` – this file
+- The API key is compiled into the public JavaScript. A static site has nowhere to hide it, so use a key you can revoke, restricted to the site's domain if your plan allows it.
+- Search history, recent chips, settings and the map cache live in `localStorage`. Nothing syncs between browsers or devices, and clearing site data erases it.
+- Map tiles come straight from OpenStreetMap's public tile server and Leaflet's popups depend on it. There is no fallback if it is slow or down, and heavy use would need a tile provider with a key.
+- Weather advice text is a fixed set of rules (storm, snow, freezing, rain, low visibility, heat, bedtime, clear night, then temperature bands), not a forecast-aware recommendation.
+- Condition descriptions are translated from a fixed table of the phrases OpenWeatherMap returns in English. An unlisted phrase shows in English.
+- The first load of a very large history still takes several batched rounds to fill every map pin, because of the rate-limit batching described above.

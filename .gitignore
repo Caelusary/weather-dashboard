@@ -1,3 +1,13 @@
+node_modules/
+dist/
+coverage/
+
+# Local env (API key). .env.example is the committed template.
+.env
+.env.*
+!.env.example
+
+# Legacy no-build config, superseded by .env.local
 config.js
 
 # IDE

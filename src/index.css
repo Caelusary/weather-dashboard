@@ -1,0 +1,164 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/geist';
+
+/* Design tokens. One accent (sky) across the app; amber is reserved for the advice callout. */
+@theme {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink-950: #070c1a;
+  --color-ink-900: #0d1428;
+  --color-ink-800: #162039;
+
+  --color-fg: #f5f8ff;
+  --color-fg-muted: #cdd6ec;
+  --color-fg-subtle: #a9b6d6;
+
+  --color-accent: #7dd3fc;
+  --color-accent-ink: #062031;
+  --color-warn: #fbbf24;
+  --color-danger: #fda4af;
+
+  --radius-card: 1rem;
+  --radius-field: 0.75rem;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+:root {
+  /* Content surfaces sit on top of the animated weather background. Opaque enough that text keeps
+     4.5:1 contrast on the brightest sky theme, and no backdrop blur so the particle layers stay
+     cheap to repaint. */
+  --surface: rgb(8 13 30 / 0.8);
+  --surface-raised: rgb(255 255 255 / 0.07);
+  --line: rgb(255 255 255 / 0.12);
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--color-ink-950);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  /* Frosted glass: the sky stays visible through it. Opacity is tuned together with .sky-scrim so
+     muted text still clears 4.5:1 over the brightest theme. */
+  .glass {
+    background: rgb(10 16 36 / 0.55);
+    border: 1px solid rgb(255 255 255 / 0.14);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    backdrop-filter: blur(18px) saturate(140%);
+  }
+
+  /* Type set directly on the sky. Hero text is large (>= 19px bold or >= 24px), so 3:1 applies;
+     the shadow keeps edges crisp over moving particles. */
+  .on-sky {
+    text-shadow:
+      0 1px 2px rgb(0 0 0 / 0.35),
+      0 4px 24px rgb(0 0 0 / 0.25);
+  }
+
+  /* Entrance for a view or a newly picked city: a short fade and rise. Re-keying the element
+     replays it. Only opacity and transform animate, so it stays on the compositor. Fill is
+     "backwards", not "both": a lingering fill would keep each section a separate stacking layer
+     and trap popovers underneath the next section. */
+  .enter {
+    animation: enter 280ms var(--ease-out) backwards;
+  }
+
+  /* Sections inside an entering view arrive a beat apart, so the page settles top to bottom. */
+  .enter-stagger > * {
+    animation: enter 320ms var(--ease-out) backwards;
+  }
+
+  .enter-stagger > :nth-child(2) {
+    animation-delay: 50ms;
+  }
+
+  .enter-stagger > :nth-child(3) {
+    animation-delay: 100ms;
+  }
+
+  .enter-stagger > :nth-child(n + 4) {
+    animation-delay: 140ms;
+  }
+
+  /* Press feedback for every tappable control. */
+  .pressable {
+    transition:
+      transform 160ms var(--ease-out),
+      background-color 160ms var(--ease-out),
+      border-color 160ms var(--ease-out);
+  }
+
+  .pressable:active {
+    transform: scale(0.97);
+  }
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.3) transparent;
+}
