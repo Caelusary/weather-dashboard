@@ -1,135 +1,20 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" dir="ltr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Weather Dashboard</title>
-  <!-- Warms up DNS+TLS to the API/icon host before the first request fires. -->
-  <link rel="preconnect" href="https://api.openweathermap.org" crossorigin />
-  <link rel="preconnect" href="https://openweathermap.org" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-<div id="bg-layer-a" class="bg-layer theme-default bg-layer--visible"></div>
-<div id="bg-layer-b" class="bg-layer"></div>
-<div id="weather-effects" class="weather-effects"></div>
-
-<div class="app">
-  <div class="app__header">
-    <h1 id="app-title" class="app__title">
-      <span id="app-title-line1" class="app__title-line">🌤️ Weather</span>
-      <span id="app-title-line2" class="app__title-line">Dashboard</span>
-    </h1>
-    <div class="header__controls">
-      <select id="language-select" class="language-select" title="Select language" aria-label="Select language">
-        <option value="en">GB&nbsp;&nbsp;|&nbsp;&nbsp;English</option>
-        <option value="es">ES&nbsp;&nbsp;|&nbsp;&nbsp;Español</option>
-        <option value="zh">CN&nbsp;&nbsp;|&nbsp;&nbsp;中文</option>
-        <option value="hi">IN&nbsp;&nbsp;|&nbsp;&nbsp;हिन्दी</option>
-        <option value="ar">SA&nbsp;&nbsp;|&nbsp;&nbsp;العربية</option>
-      </select>
-      <button id="unit-toggle" class="unit-toggle" title="Toggle temperature unit" aria-label="Toggle temperature unit">°C/°F</button>
-    </div>
-  </div>
-
-  <div class="tabs" role="tablist">
-    <button id="tab-weather" class="tab-btn tab-btn--active" data-view="weather" role="tab" aria-selected="true" aria-controls="weather-view">🌤️ Weather</button>
-    <button id="tab-history" class="tab-btn" data-view="history" role="tab" aria-selected="false" aria-controls="history-view">📜 History</button>
-  </div>
-
-  <div id="weather-view" class="view" role="tabpanel" aria-labelledby="tab-weather">
-    <form id="search-form" class="search">
-      <div class="search__wrapper">
-        <label for="city-input" class="sr-only">City name</label>
-        <input
-                type="text"
-                id="city-input"
-                class="search__input"
-                placeholder="Enter a city name..."
-                autocomplete="off"
-                role="combobox"
-                aria-expanded="false"
-                aria-controls="suggestions"
-                aria-autocomplete="list"
-        />
-        <button type="submit" id="search-button" class="search__button">Search</button>
-      </div>
-      <div id="suggestions" class="suggestions hidden" role="listbox"></div>
-    </form>
-
-    <div id="recent-searches" class="recent-searches">
-      <span id="recent-label" class="recent-label">🕒 Recent:</span>
-      <div id="recent-list" class="recent-list"></div>
-    </div>
-
-    <p id="error-message" class="error hidden" role="alert" aria-live="assertive"></p>
-
-    <div id="weather-card" class="card hidden">
-      <h2 id="city-name" class="card__city"></h2>
-      <p id="city-datetime" class="card__datetime"></p>
-      <p id="condition" class="card__condition"></p>
-      <div class="card__main">
-        <img id="weather-icon" class="card__icon" alt="Weather condition icon" width="96" height="96" />
-        <span id="temperature" class="card__temperature"></span>
-      </div>
-      <div class="card__details">
-        <div class="card__detail">
-          <span id="humidity-label" class="card__detail-label">💧 Humidity</span>
-          <span id="humidity" class="card__detail-value"></span>
-        </div>
-        <div class="card__detail">
-          <span id="feels-like-label" class="card__detail-label">🌡️ Feels Like</span>
-          <span id="feels-like" class="card__detail-value"></span>
-        </div>
-      </div>
-    </div>
-
-    <div id="weather-suggestion" class="suggestion hidden">
-      <span id="suggestion-text" class="suggestion__text"></span>
-    </div>
-
-    <div id="forecast-loading" class="loading hidden" role="status" aria-live="polite">Loading forecast...</div>
-
-    <div id="forecast" class="forecast hidden">
-      <h3 id="forecast-title" class="forecast__title">📅 5-Day Forecast</h3>
-      <div id="forecast-list" class="forecast__list"></div>
-    </div>
-
-    <div id="popular-cities" class="popular-cities">
-      <h3 id="popular-cities-title">🌍 Popular Cities</h3>
-      <div id="popular-list" class="popular-list"></div>
-    </div>
-
-    <div id="explore-map-section" class="explore-map">
-      <h3 id="explore-map-title">🌍 Explore Weather</h3>
-      <div id="explore-map" class="explore-map__container"></div>
-      <div id="explore-map-loading" class="loading explore-map__loading hidden" role="status" aria-live="polite">Loading map weather...</div>
-    </div>
-
-    <div id="loading" class="loading hidden" role="status" aria-live="polite">Loading...</div>
-  </div>
-
-  <div id="history-view" class="view hidden" role="tabpanel" aria-labelledby="tab-history">
-    <div class="history">
-      <div class="history__controls">
-        <label for="history-search" class="sr-only">Filter history by city</label>
-        <input
-                type="text"
-                id="history-search"
-                class="history__search"
-                placeholder="Filter history by city..."
-                autocomplete="off"
-        />
-        <button id="clear-history-btn" class="history__clear-btn" title="Clear all history" aria-label="Clear all history">🗑️ Clear All</button>
-      </div>
-      <div id="history-list" class="history__list"></div>
-    </div>
-  </div>
-</div>
-
-<script src="config.js" defer></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-<script src="script.js" defer></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a1022" />
+    <meta
+      name="description"
+      content="Cloudbase: live weather, a five day forecast and a world map of conditions."
+    />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <!-- Warms up DNS and TLS for the API and icon hosts before the first request fires. -->
+    <link rel="preconnect" href="https://api.openweathermap.org" crossorigin />
+    <title>Cloudbase</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
