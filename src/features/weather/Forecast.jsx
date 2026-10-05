@@ -1,7 +1,7 @@
 import { CalendarBlank } from '@phosphor-icons/react/dist/csr/CalendarBlank';
 import { Drop } from '@phosphor-icons/react/dist/csr/Drop';
 import { useMemo } from 'react';
-import InfoPopover from '../../components/InfoPopover';
+import InfoDialog from '../../components/InfoDialog';
 import WeatherIcon from '../../components/WeatherIcon';
 import { dailyForecast } from '../../lib/forecast';
 import { weekHighlights } from '../../lib/insights';
@@ -28,15 +28,15 @@ export default function Forecast({ forecast, current }) {
 
   return (
     <section aria-labelledby="forecast-heading">
-      <div className="mb-2 flex items-center gap-1 px-1">
+      <div className="mb-4 flex items-center gap-1.5 px-1">
         <h2
           id="forecast-heading"
-          className="on-sky flex items-center gap-2 text-sm font-semibold text-white/90"
+          className="on-sky flex items-center gap-2.5 text-2xl font-semibold tracking-tight text-fg sm:text-[1.75rem]"
         >
-          <CalendarBlank size={16} weight="bold" aria-hidden />
+          <CalendarBlank size={26} weight="duotone" aria-hidden className="text-accent" />
           {t('forecastTitle')}
         </h2>
-        <InfoPopover title={t('infoForecastTitle')}>
+        <InfoDialog title={t('infoForecastTitle')} Icon={CalendarBlank}>
           <ul className="list-disc space-y-1.5 ps-4 marker:text-fg-subtle">
             <li>{t('fcToday')}</li>
             <li>{t('fcHighLow')}</li>
@@ -50,7 +50,7 @@ export default function Forecast({ forecast, current }) {
               {wettest ? t('fcWettest', dayName(wettest), `${Math.round(wettest.pop * 100)}%`) : t('fcDry')}
             </p>
           </div>
-        </InfoPopover>
+        </InfoDialog>
       </div>
 
       <ul className="grid grid-cols-5 gap-2 sm:gap-3">
