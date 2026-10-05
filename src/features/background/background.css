@@ -1,0 +1,302 @@
+/* Animated weather background. Everything that moves animates only
+   transform and opacity so it stays on the compositor. */
+
+/* The wrapper creates its own stacking context at z-index -1, so the app
+   content (normal flow) always paints above it. */
+.weather-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  /* Fixed, full-viewport and clipped already, so strict containment is free: nothing inside can
+     trigger layout or paint work outside this box. */
+  contain: strict;
+}
+
+/* Two stacked full-viewport layers crossfade via opacity, since CSS can't
+   animate a gradient change directly. */
+.bg-layer {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1.6s ease;
+}
+
+.bg-layer--visible {
+  opacity: 1;
+}
+
+.theme-default {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 50%, #667eea 100%);
+}
+.theme-clear {
+  background: linear-gradient(135deg, #8ec5e8 0%, #f7d488 100%);
+}
+.theme-clouds {
+  background: linear-gradient(135deg, #bdc3c7 0%, #95a5a6 100%);
+}
+.theme-rain {
+  background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+}
+.theme-thunderstorm {
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 100%);
+}
+.theme-snow {
+  background: linear-gradient(135deg, #e6dada 0%, #274046 100%);
+}
+.theme-fog {
+  background: linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%);
+}
+.theme-night {
+  background: linear-gradient(135deg, #0a0a2e 0%, #1a1a3e 100%);
+}
+.theme-hot {
+  background: linear-gradient(135deg, #f12711 0%, #f5af19 100%);
+}
+.theme-cold {
+  background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+}
+
+/* Effects sit above the gradient layers inside the wrapper. */
+.weather-effects {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  contain: strict;
+}
+
+.snowflake {
+  position: absolute;
+  top: -10%;
+  color: #fff;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+  animation: snowfall linear infinite;
+}
+
+@keyframes snowfall {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(15px, 50vh);
+  }
+  100% {
+    transform: translate(-15px, 110vh);
+  }
+}
+
+.raindrop {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 60px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.55));
+  animation: rainfall linear infinite;
+  animation-fill-mode: backwards;
+}
+
+/* Travels well clear of both edges (-20vh to 120vh) so no part of the
+   drop clips into view at rest. */
+@keyframes rainfall {
+  0% {
+    transform: translateY(-20vh);
+  }
+  100% {
+    transform: translateY(120vh);
+  }
+}
+
+/* Sun and moon share one anchor (upper right) so day and night skies read
+   consistently. The celestial body is rendered before the particles, so
+   drifting clouds paint over it and their translucency lets the glow show
+   through as they pass. */
+.celestial {
+  position: absolute;
+  top: 8%;
+  right: 9%;
+  width: 112px;
+  height: 112px;
+  animation: celestial-rise 2.2s ease-out;
+}
+
+/* Rise and spin get separate elements: both animate transform, so on one
+   element the later animation would override the earlier one. */
+.celestial__spin {
+  position: absolute;
+  inset: 0;
+  animation: sun-drift 160s linear infinite;
+  will-change: transform;
+}
+
+@keyframes celestial-rise {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes sun-drift {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sun-beam {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  width: 3px;
+  margin-left: -1.5px;
+  transform-origin: center bottom;
+  background: linear-gradient(to top, rgba(255, 214, 140, 0), rgba(255, 214, 140, 0.55));
+  filter: blur(1px);
+  animation: sunpulse 5s ease-in-out infinite;
+}
+
+@keyframes sunpulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.sun-core {
+  position: absolute;
+  inset: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 35%, #fffbea 0%, #ffe08a 42%, #ffb84d 75%, #ff9a3c 100%);
+  box-shadow:
+    0 0 36px 12px rgba(255, 200, 110, 0.55),
+    0 0 84px 36px rgba(255, 170, 80, 0.25);
+}
+
+.moon-core {
+  position: absolute;
+  inset: 22px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 36% 32%, #fdfdfb 0%, #e6e6f0 45%, #b9b9cc 78%, #9d9db3 100%);
+  box-shadow:
+    0 0 30px 10px rgba(220, 220, 250, 0.4),
+    0 0 70px 30px rgba(180, 180, 225, 0.18);
+}
+
+.moon-crater {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(120, 120, 150, 0.3);
+}
+
+.ember {
+  position: absolute;
+  bottom: -5%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 214, 130, 0.95) 0%,
+    rgba(255, 110, 40, 0.85) 55%,
+    rgba(255, 60, 20, 0) 100%
+  );
+  box-shadow: 0 0 6px rgba(255, 120, 40, 0.6);
+  animation: ember-rise linear infinite;
+}
+
+@keyframes ember-rise {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  85% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(var(--drift, 15px), -110vh);
+    opacity: 0;
+  }
+}
+
+.drift-cloud {
+  position: absolute;
+  left: -25%;
+  width: 120px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 100px;
+  animation: cloud-drift linear infinite;
+  will-change: transform;
+}
+
+.drift-cloud::before,
+.drift-cloud::after {
+  content: '';
+  position: absolute;
+  background: inherit;
+  border-radius: 50%;
+}
+
+.drift-cloud::before {
+  width: 50px;
+  height: 50px;
+  top: -25px;
+  left: 15px;
+}
+
+.drift-cloud::after {
+  width: 34px;
+  height: 34px;
+  top: -16px;
+  left: 65px;
+}
+
+@keyframes cloud-drift {
+  from {
+    transform: translateX(0) scale(var(--cloud-scale, 1));
+  }
+  to {
+    transform: translateX(140vw) scale(var(--cloud-scale, 1));
+  }
+}
+
+.star {
+  position: absolute;
+  background: #fff;
+  border-radius: 50%;
+  animation: twinkle ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: var(--twinkle-min, 0.2);
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Reduced motion: the component also stops rendering particles and sun
+   beams; this covers the remaining animated bits (rise and crossfade). */
+@media (prefers-reduced-motion: reduce) {
+  .bg-layer {
+    transition-duration: 0.3s;
+  }
+
+  .celestial,
+  .celestial__spin {
+    animation: none;
+  }
+}
