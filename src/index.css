@@ -37,6 +37,9 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    /* Always reserve the scrollbar's space, so locking scroll under a modal (which hides the
+       scrollbar) does not shift the page and its background sideways. */
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -144,6 +147,53 @@
 
   .pressable:active {
     transform: scale(0.97);
+  }
+}
+
+/* Info dialog: the page dims in while the card rises and settles; closing plays it in reverse. */
+@layer components {
+  .info-dialog::backdrop {
+    background: rgb(0 0 0 / 0.55);
+    backdrop-filter: blur(3px);
+    animation: fade-in 240ms var(--ease-out) both;
+  }
+
+  .info-dialog > .info-card {
+    animation: dialog-in 280ms var(--ease-out) both;
+  }
+
+  .info-dialog[data-closing]::backdrop {
+    animation: fade-out 180ms ease-in both;
+  }
+
+  .info-dialog[data-closing] > .info-card {
+    animation: dialog-out 180ms ease-in both;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+}
+
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
   }
 }
 
