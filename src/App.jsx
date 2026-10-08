@@ -27,7 +27,7 @@ const loadLastCity = () => {
 
 export default function App() {
   const [view, navigate] = useHashRoute();
-  const { unit } = useSettings();
+  const { unit, t } = useSettings();
   const { recent, record } = usePlaces();
   const { coords, request: requestCoords } = useUserCoords();
   const [selected, setSelected] = useState(loadLastCity);
@@ -93,6 +93,27 @@ export default function App() {
               <div key={cityKey(selected)} className="enter-stagger space-y-6">
                 <Hero data={data} city={selected} />
                 {forecast.data && <Forecast forecast={forecast.data} current={data} />}
+                {!forecast.data && forecast.isPending && (
+                  <p role="status" className="on-sky px-1 text-fg-muted">
+                    {t('forecastLoading')}
+                  </p>
+                )}
+                {/* The forecast fails on its own; say so instead of silently dropping the section. */}
+                {!forecast.data && forecast.isError && (
+                  <div
+                    role="alert"
+                    className="glass flex flex-wrap items-center justify-between gap-3 rounded-[1.25rem] px-5 py-4"
+                  >
+                    <p className="text-fg-muted">{t('errorWeatherGeneric')}</p>
+                    <button
+                      type="button"
+                      onClick={() => forecast.refetch()}
+                      className="pressable inline-flex min-h-11 items-center rounded-full bg-accent px-5 font-semibold text-accent-ink hover:brightness-110"
+                    >
+                      {t('retry')}
+                    </button>
+                  </div>
+                )}
                 <Details data={data} />
               </div>
             )}
