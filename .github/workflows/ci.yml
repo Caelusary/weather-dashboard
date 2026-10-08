@@ -30,4 +30,4 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_OPENWEATHER_API_KEY: ci-placeholder
+          OPENWEATHER_API_KEY: ci-placeholder
