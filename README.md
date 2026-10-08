@@ -1,6 +1,6 @@
 # Cloudbase
 
-A weather app: current conditions, a five day forecast, a world map of live conditions and a search history, in five languages. Built with React 19, Vite, Tailwind CSS 4, TanStack Query and Leaflet. There is no backend: the browser calls the OpenWeatherMap API directly, so the whole app is static files.
+A weather app: current conditions, a five day forecast, a world map of live conditions and a search history, in five languages. Built with React 19, Vite, Tailwind CSS 4, TanStack Query and Leaflet. The browser never talks to OpenWeatherMap: a small serverless function ([api/weather.js](api/weather.js)) adds the API key server-side and forwards only the three requests the app makes.
 
 ## Running locally
 
@@ -14,7 +14,7 @@ npm install
 cp .env.example .env.local
 ```
 
-Set `VITE_OPENWEATHER_API_KEY` in `.env.local` (it is gitignored), then:
+Set `OPENWEATHER_API_KEY` in `.env.local` (it is gitignored). It has no `VITE_` prefix on purpose, so it stays out of the bundle; in dev a Vite middleware answers `/api/weather` with the same code the serverless function uses. Then:
 
 ```bash
 npm run dev
@@ -53,12 +53,12 @@ Pure logic lives in [src/lib](src/lib) and is covered by tests. Each feature own
 - **Location is requested on first use of the search box, not on page load**, so the permission prompt appears when the reason for it is obvious. Without it, results simply are not sorted by distance ([src/hooks/useUserCoords.js](src/hooks/useUserCoords.js)).
 - **Arabic stays left-to-right.** The UI translates text but does not mirror the layout, so switching language never flips the page ([src/providers/SettingsProvider.jsx:29](src/providers/SettingsProvider.jsx#L29)).
 - **OpenStreetMap tiles are darkened with a CSS filter.** The dark CARTO tile sets now require an API key, so the map uses the plain OpenStreetMap tiles inverted in the browser ([src/features/map/map.css:19](src/features/map/map.css#L19)).
-- **Stored data is treated as untrusted.** Search history, recent chips and the last city are rebuilt field by field when read back (known keys only, strict types, capped length, range-checked coordinates), so a corrupted or hand-edited `localStorage` cannot crash a render ([src/lib/storage.js](src/lib/storage.js)). Production builds also carry a Content-Security-Policy that allows only this origin, the OpenWeatherMap API and OpenStreetMap tiles ([vite.config.js:20](vite.config.js#L20)).
+- **Stored data is treated as untrusted.** Search history, recent chips and the last city are rebuilt field by field when read back (known keys only, strict types, capped length, range-checked coordinates), so a corrupted or hand-edited `localStorage` cannot crash a render ([src/lib/storage.js](src/lib/storage.js)). Production builds also carry a Content-Security-Policy that allows only this origin and OpenStreetMap tiles ([vite.config.js:15](vite.config.js#L15)).
 - **Phones get their own layout.** A bottom tab bar, a compact language picker and stacked weather details replace the desktop header and two-column grid.
 
 ## Deployment
 
-Pushing to `main` runs [.github/workflows/deploy.yml](.github/workflows/deploy.yml): install, lint, test, build, then publish `dist/` to GitHub Pages. The repository secret `OPENWEATHER_API_KEY` is passed to the build as `VITE_OPENWEATHER_API_KEY`. Pull requests run [.github/workflows/ci.yml](.github/workflows/ci.yml), which does the same checks without deploying.
+The live site runs on Vercel, which builds `dist/` and deploys `api/weather.js` as a function; the project needs `OPENWEATHER_API_KEY` set in its environment variables. Pushing to `main` also runs [.github/workflows/deploy.yml](.github/workflows/deploy.yml): install, lint, test, build, then publish `dist/` to GitHub Pages. Pages serves static files only, so weather requests fail there. Pull requests run [.github/workflows/ci.yml](.github/workflows/ci.yml), which does the same checks without deploying.
 
 ## Tests
 
@@ -66,7 +66,7 @@ Pushing to `main` runs [.github/workflows/deploy.yml](.github/workflows/deploy.y
 
 ## Known limitations
 
-- The API key is compiled into the public JavaScript. A static site has nowhere to hide it, so use a key you can revoke, restricted to the site's domain if your plan allows it.
+- The proxy hides the key but does not rate-limit callers, so anyone can spend the key's quota through `/api/weather`. CDN caching of identical requests softens this.
 - Search history, recent chips, settings and the map cache live in `localStorage`. Nothing syncs between browsers or devices, and clearing site data erases it.
 - Map tiles come straight from OpenStreetMap's public tile server and Leaflet's popups depend on it. There is no fallback if it is slow or down, and heavy use would need a tile provider with a key.
 - Weather advice text is a fixed set of rules (storm, snow, freezing, rain, low visibility, heat, bedtime, clear night, then temperature bands), not a forecast-aware recommendation.
