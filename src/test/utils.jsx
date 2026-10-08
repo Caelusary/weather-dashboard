@@ -38,9 +38,10 @@ export function renderApp(ui = <App />, { queryClient = createTestQueryClient() 
 // fetch stub
 // ---------------------------------------------------------------------------------------------
 
-export const GEO = '/geo/1.0/direct';
-export const WEATHER = '/data/2.5/weather';
-export const FORECAST = '/data/2.5/forecast';
+// Proxy endpoints (the `endpoint` query param of /api/weather).
+export const GEO = 'geocode';
+export const WEATHER = 'weather';
+export const FORECAST = 'forecast';
 
 export const jsonResponse = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -49,23 +50,24 @@ export const jsonResponse = (body, status = 200) =>
 export const httpError = (status) => jsonResponse({ cod: status, message: 'error' }, status);
 
 /**
- * Stubs global fetch. `routes` maps a URL path to either a body or a handler
+ * Stubs global fetch. `routes` maps a proxy endpoint (GEO, WEATHER, FORECAST) to either a body or a handler
  * `({ url, params, signal }) => body | Response | Promise<...>`. A handler may throw to simulate a
  * network failure. Honors AbortSignal like the real fetch, and records every call.
  *
- * Returns `{ calls, callsTo(path) }`; each call is `{ path, params, url }`. A request to a path
- * with no route fails loudly instead of silently passing.
+ * Returns `{ calls, callsTo(path) }`; each call is `{ path, params, url }`, where `path` is the
+ * endpoint. A request to an endpoint with no route fails loudly instead of silently passing.
  */
 export function mockFetch(routes) {
   const calls = [];
 
   const fetchStub = vi.fn(async (input, init = {}) => {
     const url = new URL(input instanceof Request ? input.url : String(input));
-    const params = Object.fromEntries(url.searchParams);
-    calls.push({ path: url.pathname, params, url: url.href });
+    const { endpoint, ...params } = Object.fromEntries(url.searchParams);
+    if (url.pathname !== '/api/weather') throw new Error(`mockFetch: unexpected URL ${url.href}`);
+    calls.push({ path: endpoint, params, url: url.href });
 
-    const route = routes[url.pathname];
-    if (route === undefined) throw new Error(`mockFetch: no route for ${url.pathname}`);
+    const route = routes[endpoint];
+    if (route === undefined) throw new Error(`mockFetch: no route for ${endpoint}`);
 
     const signal = init.signal;
     const abortError = () => new DOMException('The operation was aborted.', 'AbortError');
