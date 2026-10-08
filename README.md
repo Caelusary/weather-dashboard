@@ -58,11 +58,11 @@ Pure logic lives in [src/lib](src/lib) and is covered by tests. Each feature own
 
 ## Deployment
 
-The live site runs on Vercel, which builds `dist/` and deploys `api/weather.js` as a function; the project needs `OPENWEATHER_API_KEY` set in its environment variables. Pushing to `main` also runs [.github/workflows/deploy.yml](.github/workflows/deploy.yml): install, lint, test, build, then publish `dist/` to GitHub Pages. Pages serves static files only, so weather requests fail there. Pull requests run [.github/workflows/ci.yml](.github/workflows/ci.yml), which does the same checks without deploying.
+The live site runs on Vercel, which builds `dist/` and deploys `api/weather.js` as a function; the project needs `OPENWEATHER_API_KEY` set in its environment variables. Pushes to `main` and pull requests run [.github/workflows/ci.yml](.github/workflows/ci.yml): install, lint, test and build.
 
 ## Tests
 
-`npm test` runs 182 tests across 13 files. They cover the pure logic (city ranking, day grouping for the forecast, unit conversion, storage migration and caps, the suggestion and theme rules), the search hook including aborted requests, the map's cache and batching, the background particle generators, and the main user journeys with the network stubbed.
+`npm test` runs 194 tests across 14 files. They cover the pure logic (city ranking, day grouping for the forecast, unit conversion, storage migration and caps, the suggestion and theme rules), the search hook including aborted requests, the map's cache and batching, the background particle generators, the weather proxy's allowlist and key handling, and the main user journeys with the network stubbed.
 
 ## Known limitations
 
