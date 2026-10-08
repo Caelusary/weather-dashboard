@@ -1,4 +1,5 @@
-export const API_BASE = 'https://api.openweathermap.org';
+// Serverless proxy (api/weather.js) in production, Vite middleware in dev.
+export const API_PATH = '/api/weather';
 
 export const RECENT_LIMIT = 7;
 export const HISTORY_LIMIT = 200;
