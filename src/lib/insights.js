@@ -65,3 +65,27 @@ export function weekHighlights(days, rainThreshold = 0.2) {
   const wettest = pick((d, b) => d.pop > b.pop);
   return { warmest, coolest, wettest: wettest.pop >= rainThreshold ? wettest : null };
 }
+
+/**
+ * The best 3-hour slot to be outdoors in the next 24 hours, from the forecast already fetched:
+ * daylight only (08:00 to 19:00 local), then the lowest rain chance, then the mildest temperature,
+ * with strong wind counting against a slot. Returns the forecast entry and
+ * whether it falls today, or null when no daylight slot is left in the window.
+ */
+export function bestTimeOut(forecast, now = Date.now(), { comfortC = 20, windyMs = 8 } = {}) {
+  const offset = forecast.city.timezone;
+  const nowSeconds = now / 1000;
+  const localDay = (seconds) => Math.floor((seconds + offset) / 86400);
+  const score = (e) =>
+    (e.pop ?? 0) * 100 + Math.abs(e.main.temp - comfortC) * 1.5 + Math.max(0, (e.wind?.speed ?? 0) - windyMs) * 3;
+
+  let best = null;
+  for (const entry of forecast.list) {
+    if (entry.dt + 3 * 3600 <= nowSeconds || entry.dt > nowSeconds + 24 * 3600) continue;
+    const hour = new Date((entry.dt + offset) * 1000).getUTCHours();
+    if (hour < 8 || hour > 19) continue;
+    if (!best || score(entry) < score(best)) best = entry;
+  }
+  if (!best) return null;
+  return { entry: best, isToday: localDay(best.dt) === localDay(nowSeconds) };
+}
