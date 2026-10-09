@@ -52,7 +52,7 @@ export default function HistoryView({ onSelect }) {
             <button
               type="button"
               onClick={() => setConfirming(false)}
-              className="pressable min-h-10 rounded-full px-4 text-sm font-semibold hover:bg-white/10"
+              className="pressable min-h-11 rounded-full px-4 text-sm font-semibold hover:bg-white/10"
             >
               {t('cancel')}
             </button>
@@ -62,7 +62,7 @@ export default function HistoryView({ onSelect }) {
                 clear();
                 setConfirming(false);
               }}
-              className="pressable min-h-10 rounded-full bg-danger px-4 text-sm font-semibold text-ink-950 hover:brightness-110"
+              className="pressable min-h-11 rounded-full bg-danger px-4 text-sm font-semibold text-ink-950 hover:brightness-110"
             >
               {t('confirmClear')}
             </button>
@@ -122,7 +122,7 @@ export default function HistoryView({ onSelect }) {
                   type="button"
                   aria-label={`${t('deleteEntryTitle')}: ${label}`}
                   onClick={() => removeHistory(entry.timestamp)}
-                  className={`pressable absolute top-1/2 right-3 grid size-10 -translate-y-1/2 place-items-center rounded-full text-fg-muted transition-opacity duration-150 hover:bg-white/15 hover:text-fg focus-visible:opacity-100 ${REVEAL_ON_HOVER}`}
+                  className={`pressable absolute top-1/2 right-3 grid size-11 -translate-y-1/2 place-items-center rounded-full text-fg-muted transition-opacity duration-150 hover:bg-white/15 hover:text-fg focus-visible:opacity-100 ${REVEAL_ON_HOVER}`}
                 >
                   <X size={18} weight="bold" aria-hidden />
                 </button>
