@@ -4,7 +4,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import globals from 'globals';
 
 export default [
-  { ignores: ['dist/**', 'coverage/**'] },
+  { ignores: ['dist/**', 'coverage/**', 'playwright-report/**', 'test-results/**'] },
   js.configs.recommended,
   {
     files: ['**/*.{js,jsx}'],
@@ -26,7 +26,7 @@ export default [
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
   },
   {
-    files: ['vite.config.js', 'eslint.config.js', 'api/**/*.js'],
+    files: ['vite.config.js', 'eslint.config.js', 'playwright.config.js', 'api/**/*.js', 'e2e/**/*.js'],
     languageOptions: { globals: globals.node },
   },
 ];
