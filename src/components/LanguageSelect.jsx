@@ -22,7 +22,7 @@ export default function LanguageSelect() {
       <select
         value={language}
         onChange={(event) => setLanguage(event.target.value)}
-        className="pressable min-h-10 cursor-pointer appearance-none glass rounded-full py-1 pr-9 pl-9 text-sm font-semibold hover:bg-white/10 max-sm:w-11 max-sm:px-0 max-sm:text-transparent"
+        className="pressable min-h-11 cursor-pointer appearance-none glass rounded-full py-1 pr-9 pl-9 text-sm font-semibold hover:bg-white/10 max-sm:w-11 max-sm:px-0 max-sm:text-transparent"
       >
         {LANGUAGES.map(({ code, label }) => (
           <option key={code} value={code} className="bg-ink-900 text-fg">
