@@ -76,6 +76,8 @@ export const TRANSLATIONS = {
     fcCoolest: (day, temp) => `Coolest night: ${day}, dropping to ${temp}.`,
     fcWettest: (day, pct) => `Most likely to rain: ${day}, with a ${pct} chance.`,
     fcDry: 'No real chance of rain this week, so you can leave the umbrella at home.',
+    bestTime: (when, time, temp, rain) =>
+      `Best time to head out: ${when} at ${time}, ${temp} with a ${rain} chance of rain.`,
     feelsDef:
       'This is how warm or cold it actually feels on your skin. Humidity can make heat feel stronger, and wind can make cold feel sharper.',
     feelsSame:
@@ -216,6 +218,8 @@ export const TRANSLATIONS = {
     fcCoolest: (day, temp) => `Noche más fresca: ${day}, bajando a ${temp}.`,
     fcWettest: (day, pct) => `Más probable que llueva: ${day}, con un ${pct} de probabilidad.`,
     fcDry: 'No hay una probabilidad real de lluvia esta semana, así que puedes dejar el paraguas en casa.',
+    bestTime: (when, time, temp, rain) =>
+      `Mejor momento para salir: ${when} a las ${time}, ${temp} y ${rain} de probabilidad de lluvia.`,
     feelsDef:
       'Es lo cálido o frío que se siente realmente en la piel. La humedad puede hacer que el calor se sienta más fuerte, y el viento, que el frío se sienta más intenso.',
     feelsSame:
@@ -357,6 +361,7 @@ export const TRANSLATIONS = {
     fcCoolest: (day, temp) => `最凉的夜晚：${day}，最低降到 ${temp}。`,
     fcWettest: (day, pct) => `最可能下雨：${day}，降雨概率 ${pct}。`,
     fcDry: '这周基本不会下雨，可以不用带伞。',
+    bestTime: (when, time, temp, rain) => `最佳出门时间：${when} ${time}，${temp}，降雨概率 ${rain}。`,
     feelsDef: '体感温度是皮肤实际感受到的冷热。潮湿会让热的感觉更强，刮风会让冷的感觉更明显。',
     feelsSame: '现在的体感和温度计显示的差不多，按实际气温穿衣就好。',
     feelsWarmer: '现在感觉比温度计显示的更热，主要是因为空气潮湿。穿轻薄的衣服、多喝水会舒服些。',
@@ -478,6 +483,8 @@ export const TRANSLATIONS = {
     fcCoolest: (day, temp) => `सबसे ठंडी रात: ${day}, ${temp} तक।`,
     fcWettest: (day, pct) => `बारिश की सबसे ज़्यादा संभावना: ${day}, ${pct}।`,
     fcDry: 'इस हफ़्ते बारिश की कोई खास संभावना नहीं है, तो छाता घर पर छोड़ सकते हैं।',
+    bestTime: (when, time, temp, rain) =>
+      `बाहर निकलने का सबसे अच्छा समय: ${when} ${time}, ${temp}, बारिश की संभावना ${rain}।`,
     feelsDef:
       'यह बताता है कि त्वचा पर असल में कितनी गर्मी या ठंड महसूस होती है। नमी से गर्मी ज़्यादा लगती है और हवा से ठंड ज़्यादा चुभती है।',
     feelsSame:
@@ -613,6 +620,7 @@ export const TRANSLATIONS = {
     fcCoolest: (day, temp) => `أبرد ليلة: ${day}، حتى ${temp}.`,
     fcWettest: (day, pct) => `الأرجح للمطر: ${day}، باحتمال ${pct}.`,
     fcDry: 'لا يوجد احتمال حقيقي للمطر هذا الأسبوع، لذا يمكنك ترك المظلة في المنزل.',
+    bestTime: (when, time, temp, rain) => `أفضل وقت للخروج: ${when} الساعة ${time}، ${temp} مع احتمال مطر ${rain}.`,
     feelsDef:
       'هي مدى الحرارة أو البرودة التي تشعر بها فعلاً على بشرتك. الرطوبة تجعل الحر أقوى، والرياح تجعل البرد أشد.',
     feelsSame: 'الإحساس الآن قريب مما يقيسه الميزان، لذا ارتدِ ملابس تناسب درجة الحرارة الفعلية.',
