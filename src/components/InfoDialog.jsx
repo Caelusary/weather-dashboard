@@ -66,7 +66,7 @@ export default function InfoDialog({ title, Icon, children }) {
         aria-label={`${t('infoButton')}: ${title}`}
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
-        className={`pressable grid size-8 place-items-center rounded-full hover:bg-white/15 ${
+        className={`pressable relative grid size-8 place-items-center rounded-full after:absolute after:-inset-1.5 after:content-[''] hover:bg-white/15 ${
           open ? 'bg-white/15 text-fg' : 'text-fg-muted'
         }`}
       >
@@ -98,7 +98,7 @@ export default function InfoDialog({ title, Icon, children }) {
                   type="button"
                   aria-label={t('close')}
                   onClick={requestClose}
-                  className="pressable -mt-1 -mr-2 grid size-9 shrink-0 place-items-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg"
+                  className="pressable -mt-1.5 -mr-2.5 grid size-11 shrink-0 place-items-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg"
                 >
                   <X size={18} weight="bold" aria-hidden />
                 </button>
