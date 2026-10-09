@@ -99,7 +99,7 @@ export default function SearchBox({ initialQuery = '', recent, userCoords, reque
       <MagnifyingGlass
         size={20}
         aria-hidden
-        className="pointer-events-none absolute top-[1.625rem] left-5 z-10 -translate-y-1/2 text-fg-muted"
+        className="pointer-events-none absolute top-7 left-5 z-10 -translate-y-1/2 text-fg-muted"
       />
       <input
         id={`${listId}-input`}
@@ -133,13 +133,13 @@ export default function SearchBox({ initialQuery = '', recent, userCoords, reque
         }}
         onBlur={() => setFocused(false)}
         onKeyDown={onKeyDown}
-        className="glass min-h-13 w-full rounded-full pr-28 pl-13 text-base placeholder:text-fg-muted focus-visible:border-accent/70 focus-visible:outline-none"
+        className="glass min-h-14 w-full rounded-full pr-28 pl-13 text-base placeholder:text-fg-muted focus-visible:border-accent/70 focus-visible:outline-none"
       />
       <button
         type="submit"
         disabled={pending}
         aria-busy={pending}
-        className="pressable absolute top-1.5 right-1.5 inline-flex h-10 min-w-22 items-center justify-center rounded-full bg-accent px-5 text-sm font-semibold text-accent-ink hover:brightness-110 disabled:opacity-80"
+        className="pressable absolute top-1.5 right-1.5 inline-flex h-11 min-w-22 items-center justify-center rounded-full bg-accent px-5 text-sm font-semibold text-accent-ink hover:brightness-110 disabled:opacity-80"
       >
         {/* The label stays in the DOM while pending so the button never changes width. */}
         <span className={pending ? 'invisible' : undefined}>{t('searchButton')}</span>
