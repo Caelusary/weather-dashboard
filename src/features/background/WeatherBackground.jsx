@@ -1,5 +1,6 @@
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import './background.css';
+import { isWeakDevice } from '../../lib/device';
 import { MOON_CRATERS, PARTICLE_KIND_BY_THEME, SUN_BEAMS, THEMES, generateParticles } from './effects';
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
@@ -27,6 +28,21 @@ function useMediaQuery(query) {
     () => false,
   );
 }
+
+// A hidden tab still runs CSS animations on some browsers; pausing them saves the battery.
+const subscribeVisibility = (callback) => {
+  document.addEventListener('visibilitychange', callback);
+  return () => document.removeEventListener('visibilitychange', callback);
+};
+const useDocumentHidden = () =>
+  useSyncExternalStore(
+    subscribeVisibility,
+    () => document.visibilityState === 'hidden',
+    () => false,
+  );
+
+// Read once: core count and memory do not change while the page is open.
+const WEAK_DEVICE = isWeakDevice();
 
 // The sun gets pulsing, slowly rotating beams; the moon gets craters. Under
 // reduced motion only the bare disc is drawn.
@@ -147,7 +163,9 @@ function Particles({ kind, items }) {
  */
 export default function WeatherBackground({ theme = 'default', isNight = false }) {
   const themeKey = THEMES.includes(theme) ? theme : 'default';
-  const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY);
+  // Weak devices get the same still sky as reduced motion: gradient and a bare sun or moon.
+  const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY) || WEAK_DEVICE;
+  const hidden = useDocumentHidden();
   const isSmallScreen = useMediaQuery(SMALL_SCREEN_QUERY);
 
   // Two layers take turns being the visible one. When the theme changes, the
@@ -172,7 +190,7 @@ export default function WeatherBackground({ theme = 'default', isNight = false }
   );
 
   return (
-    <div className="weather-bg" aria-hidden="true">
+    <div className={`weather-bg${hidden ? ' weather-bg--paused' : ''}`} aria-hidden="true">
       {layers.themes.map((layerTheme, i) => (
         <div
           key={i}
