@@ -26,6 +26,7 @@ npm run dev
 | `npm run build`   | Production build into `dist/`                              |
 | `npm run preview` | Serves the production build locally                        |
 | `npm test`        | Runs the Vitest suite once (`npm run test:watch` to watch) |
+| `npm run test:e2e` | Builds, previews and runs the Playwright journeys          |
 | `npm run lint`    | ESLint over the whole project                              |
 | `npm run format`  | Prettier over the whole project                            |
 
@@ -35,7 +36,7 @@ The active view lives in the URL hash, so each one is linkable and works on a st
 
 | View    | Hash        | Contents                                                                                                                                                                                                                                                                      |
 | ------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Weather | `#/`        | The current reading set directly on the animated sky, advice, a five day forecast (today plus four days, each with a labelled high and low) and a details panel. The forecast and every individual detail have an (i) button that explains, in plain language, what the number means, what today's value implies and a practical tip. Focusing the search box offers recent and popular cities |
+| Weather | `#/`        | The current reading set directly on the animated sky, advice, a "best time to head out" line (the driest, then mildest, daylight slot in the next 24 hours, from the forecast already fetched), a five day forecast (today plus four days, each with a labelled high and low) and a details panel. The forecast and every individual detail have an (i) button that explains, in plain language, what the number means, what today's value implies and a practical tip. Focusing the search box offers recent and popular cities |
 | Explore | `#/explore` | Leaflet map with a temperature-coloured pin for every popular city and every city in your history                                                                                                                                                                             |
 | History | `#/history` | Timestamped log of searches with filtering, per-entry delete and a confirmed clear-all                                                                                                                                                                                        |
 
@@ -53,16 +54,19 @@ Pure logic lives in [src/lib](src/lib) and is covered by tests. Each feature own
 - **Location is requested on first use of the search box, not on page load**, so the permission prompt appears when the reason for it is obvious. Without it, results simply are not sorted by distance ([src/hooks/useUserCoords.js](src/hooks/useUserCoords.js)).
 - **Arabic stays left-to-right.** The UI translates text but does not mirror the layout, so switching language never flips the page ([src/providers/SettingsProvider.jsx:29](src/providers/SettingsProvider.jsx#L29)).
 - **OpenStreetMap tiles are darkened with a CSS filter.** The dark CARTO tile sets now require an API key, so the map uses the plain OpenStreetMap tiles inverted in the browser ([src/features/map/map.css:19](src/features/map/map.css#L19)).
-- **Stored data is treated as untrusted.** Search history, recent chips and the last city are rebuilt field by field when read back (known keys only, strict types, capped length, range-checked coordinates), so a corrupted or hand-edited `localStorage` cannot crash a render ([src/lib/storage.js](src/lib/storage.js)). Production builds also carry a Content-Security-Policy that allows only this origin and OpenStreetMap tiles ([vite.config.js:15](vite.config.js#L15)).
+- **Stored data is treated as untrusted.** Search history, recent chips and the last city are rebuilt field by field when read back (known keys only, strict types, capped length, range-checked coordinates), so a corrupted or hand-edited `localStorage` cannot crash a render ([src/lib/storage.js](src/lib/storage.js)). The site is served with a strict Content-Security-Policy (only this origin and OpenStreetMap tiles), `frame-ancestors 'none'`, `nosniff` and a referrer policy, all set in [vercel.json](vercel.json); `vite preview` serves the same headers so the end-to-end tests run under the real policy.
+- **The sky stays cheap.** Its loops pause while the tab is hidden; phones get flat glass instead of a backdrop blur, since a blur over rain or stars is redrawn every frame; and weak devices (four cores or fewer, 4 GB or less, or Data Saver) get the still sky that reduced motion gets ([src/lib/device.js](src/lib/device.js)).
 - **Phones get their own layout.** A bottom tab bar, a compact language picker and stacked weather details replace the desktop header and two-column grid.
 
 ## Deployment
 
-The live site runs on Vercel, which builds `dist/` and deploys `api/weather.js` as a function; the project needs `OPENWEATHER_API_KEY` set in its environment variables. Pushes to `main` and pull requests run [.github/workflows/ci.yml](.github/workflows/ci.yml): install, lint, test and build.
+The live site runs on Vercel, which builds `dist/` and deploys `api/weather.js` as a function; the project needs `OPENWEATHER_API_KEY` set in its environment variables. Pushes to `main` and pull requests run [.github/workflows/ci.yml](.github/workflows/ci.yml): install, lint, test and build, plus a Playwright job that runs the journeys against the production build and uploads the report on failure.
 
 ## Tests
 
-`npm test` runs 194 tests across 14 files. They cover the pure logic (city ranking, day grouping for the forecast, unit conversion, storage migration and caps, the suggestion and theme rules), the search hook including aborted requests, the map's cache and batching, the background particle generators, the weather proxy's allowlist and key handling, and the main user journeys with the network stubbed.
+`npm test` runs 201 tests across 15 files. They cover the pure logic (city ranking, day grouping for the forecast, unit conversion, storage migration and caps, the suggestion and theme rules), the search hook including aborted requests, the map's cache and batching, the background particle generators, the weather proxy's allowlist and key handling, and the main user journeys with the network stubbed.
+
+`npm run test:e2e` runs the production build in Chromium on a Pixel 7 and on desktop: search, the reading and forecast, the unit toggle, all five languages at 375px with no sideways overflow, a city that does not exist, a failed search, a failed weather request and its retry, Explore and History, and the still sky on a weak device. Each screen gets an axe scan (WCAG 2 A/AA, serious and critical findings fail the run) and any CSP violation fails the test. Every `/api/weather` call is answered from [e2e/fixtures.js](e2e/fixtures.js) and other hosts are blocked, so no key is needed and OpenWeatherMap is never contacted. The first run needs `npx playwright install chromium`.
 
 ## Known limitations
 
