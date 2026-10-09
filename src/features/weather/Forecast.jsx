@@ -1,13 +1,17 @@
 import { CalendarBlank } from '@phosphor-icons/react/dist/csr/CalendarBlank';
 import { Drop } from '@phosphor-icons/react/dist/csr/Drop';
+import { PersonSimpleWalk } from '@phosphor-icons/react/dist/csr/PersonSimpleWalk';
 import { useMemo } from 'react';
 import InfoDialog from '../../components/InfoDialog';
 import WeatherIcon from '../../components/WeatherIcon';
 import { dailyForecast } from '../../lib/forecast';
-import { weekHighlights } from '../../lib/insights';
+import { bestTimeOut, weekHighlights } from '../../lib/insights';
 import { formatTemp } from '../../lib/units';
-import { conditionKind } from '../../lib/weather';
+import { conditionKind, formatCityClock } from '../../lib/weather';
 import { useSettings } from '../../providers/settingsContext';
+
+const cityLocalWeekday = (unixSeconds, offset, locale) =>
+  new Date((unixSeconds + offset) * 1000).toLocaleDateString(locale, { weekday: 'long', timeZone: 'UTC' });
 
 // Below this, a rain chance is noise; above it, it is worth a line.
 const RAIN_THRESHOLD = 0.2;
@@ -25,6 +29,7 @@ export default function Forecast({ forecast, current }) {
   const dayName = (day) =>
     day.isToday ? t('today') : day.date.toLocaleDateString(locale, { weekday: 'short', timeZone: 'UTC' });
   const { warmest, coolest, wettest } = weekHighlights(days, RAIN_THRESHOLD);
+  const best = useMemo(() => bestTimeOut(forecast), [forecast]);
 
   return (
     <section aria-labelledby="forecast-heading">
@@ -52,6 +57,22 @@ export default function Forecast({ forecast, current }) {
           </div>
         </InfoDialog>
       </div>
+
+      {/* A plan for the next 24 hours from the same forecast, which a glance at the tiles can't give. */}
+      {best && (
+        <p className="glass mb-4 flex items-start gap-3 rounded-2xl px-4 py-3 text-sm leading-snug sm:text-base">
+          <PersonSimpleWalk size={20} weight="duotone" aria-hidden className="mt-px shrink-0 text-accent" />
+          {t(
+            'bestTime',
+            best.isToday
+              ? t('today').toLocaleLowerCase(locale)
+              : cityLocalWeekday(best.entry.dt, forecast.city.timezone, locale),
+            formatCityClock(best.entry.dt, forecast.city.timezone, locale),
+            formatTemp(best.entry.main.temp, unit),
+            `${Math.round((best.entry.pop ?? 0) * 100)}%`,
+          )}
+        </p>
+      )}
 
       <ul className="grid grid-cols-5 gap-2 sm:gap-3">
         {days.map((day) => {
