@@ -25,7 +25,7 @@ export default function UnitToggle() {
             role="radio"
             aria-checked={active}
             onClick={() => setUnit(value)}
-            className={`pressable min-h-9 min-w-11 rounded-full px-3 text-sm font-semibold ${
+            className={`pressable min-h-11 min-w-11 rounded-full px-3 text-sm font-semibold ${
               active ? 'bg-accent text-accent-ink' : 'text-fg-muted hover:text-fg'
             }`}
           >
