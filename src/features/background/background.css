@@ -14,6 +14,13 @@
   contain: strict;
 }
 
+/* Tab in the background: freeze every loop where it is, resume in place on return. */
+.weather-bg--paused *,
+.weather-bg--paused *::before,
+.weather-bg--paused *::after {
+  animation-play-state: paused !important;
+}
+
 /* Two stacked full-viewport layers crossfade via opacity, since CSS can't
    animate a gradient change directly. */
 .bg-layer {
@@ -157,7 +164,7 @@
   margin-left: -1.5px;
   transform-origin: center bottom;
   background: linear-gradient(to top, rgba(255, 214, 140, 0), rgba(255, 214, 140, 0.55));
-  filter: blur(1px);
+  border-radius: 2px;
   animation: sunpulse 5s ease-in-out infinite;
 }
 
