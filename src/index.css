@@ -104,6 +104,23 @@
     backdrop-filter: blur(18px) saturate(140%);
   }
 
+  /* Rain, snow and stars animate forever under the glass, and a backdrop blur over a moving layer
+     is re-rendered every frame. Phones and weak devices get flat glass instead (a touch more
+     opaque, so contrast holds); desktops keep the blur. */
+  @media (max-width: 767.98px) {
+    .glass {
+      background: rgb(10 16 36 / 0.7);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
+  :root.lite .glass {
+    background: rgb(10 16 36 / 0.7);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
   /* Type set directly on the sky. Hero text is large (>= 19px bold or >= 24px), so 3:1 applies;
      the shadow keeps edges crisp over moving particles. */
   .on-sky {
