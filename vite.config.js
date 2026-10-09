@@ -1,34 +1,22 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import { readFileSync } from 'node:fs';
 import { defineConfig, loadEnv } from 'vite';
 import { proxyOpenWeather } from './api/_openweather.js';
 
-// Production-only CSP: the dev server needs inline module scripts and a websocket, so the meta
-// tag is injected at build time. Leaflet sets inline styles at runtime, hence style-src 'unsafe-inline'.
-const CSP = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.tile.openstreetmap.org",
-  "font-src 'self' data:",
-  // Weather data comes from the same-origin /api/weather function, not from OpenWeatherMap directly.
-  "connect-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'none'",
-].join('; ');
-
-const cspPlugin = {
-  name: 'inject-csp',
-  apply: 'build',
-  transformIndexHtml: () => [
-    {
-      tag: 'meta',
-      attrs: { 'http-equiv': 'Content-Security-Policy', content: CSP },
-      injectTo: 'head-prepend',
-    },
-  ],
-};
+// Security headers (CSP included) live in vercel.json, the one source of truth. `vite preview`
+// serves the same ones, so the e2e suite runs the production build under the real policy and
+// fails on any violation. The dev server gets none: it needs inline scripts and a websocket.
+const vercelHeaders = JSON.parse(readFileSync(new URL('./vercel.json', import.meta.url), 'utf8')).headers;
+const previewHeaders = Object.fromEntries(
+  vercelHeaders.find((rule) => rule.source === '/(.*)').headers.map(({ key, value }) => [key, value]),
+);
+// Plain-http localhost cannot honour these two.
+delete previewHeaders['Strict-Transport-Security'];
+previewHeaders['Content-Security-Policy'] = previewHeaders['Content-Security-Policy'].replace(
+  '; upgrade-insecure-requests',
+  '',
+);
 
 // Each Phosphor icon ships six weights as separate SVG paths and tree-shaking cannot drop unused
 // entries from the per-icon weight map. The app never uses "thin" or "light", so strip them from
@@ -95,11 +83,11 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     tailwindcss(),
-    cspPlugin,
     pruneIconWeights,
     preloadFont,
     weatherApi(loadEnv(mode, process.cwd(), '').OPENWEATHER_API_KEY),
   ],
+  preview: { headers: previewHeaders },
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{js,jsx}', 'api/**/*.test.js'],
