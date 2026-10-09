@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  bestTimeOut,
   cloudsKey,
   daylight,
   feelsKey,
@@ -92,5 +93,48 @@ describe('weekHighlights', () => {
 
   it('breaks ties toward the earliest day', () => {
     expect(weekHighlights([day('a', 30, 20, 0), day('b', 30, 20, 0)]).warmest.key).toBe('a');
+  });
+});
+
+describe('bestTimeOut', () => {
+  // 2026-06-01 06:00 UTC; the city sits at UTC+0 unless a test says otherwise.
+  const NOW = Date.UTC(2026, 5, 1, 6);
+  const at = (hour) => NOW / 1000 + (hour - 6) * 3600;
+  const slot = (hour, { temp = 18, pop = 0, wind = 3 } = {}) => ({
+    dt: at(hour),
+    main: { temp },
+    pop,
+    wind: { speed: wind },
+  });
+  const forecast = (list, timezone = 0) => ({ city: { timezone }, list });
+
+  it('prefers the driest daylight slot over a milder wet one', () => {
+    const result = bestTimeOut(forecast([slot(9, { temp: 20, pop: 0.6 }), slot(12, { temp: 14, pop: 0 })]), NOW);
+    expect(result.entry.dt).toBe(at(12));
+    expect(result.isToday).toBe(true);
+  });
+
+  it('breaks a dry tie on temperature, and counts strong wind against a slot', () => {
+    const list = [slot(9, { temp: 11 }), slot(12, { temp: 19, wind: 14 }), slot(15, { temp: 17 })];
+    expect(bestTimeOut(forecast(list), NOW).entry.dt).toBe(at(15));
+  });
+
+  it('skips night slots and anything past the next 24 hours', () => {
+    const evening = Date.UTC(2026, 5, 1, 20);
+    const list = [slot(21), slot(27), slot(33, { pop: 0.3 }), slot(12 + 48)];
+    const result = bestTimeOut(forecast(list), evening);
+    expect(result.entry.dt).toBe(at(33));
+    expect(result.isToday).toBe(false);
+  });
+
+  it('keeps a slot that is already under way', () => {
+    expect(bestTimeOut(forecast([slot(5)]), NOW)).toBeNull();
+    expect(bestTimeOut(forecast([slot(9)]), Date.UTC(2026, 5, 1, 10)).entry.dt).toBe(at(9));
+  });
+
+  it('reads hours in the city timezone', () => {
+    // 22:00 UTC is 08:00 in UTC+10, so it counts as daylight there.
+    expect(bestTimeOut(forecast([slot(22)], 10 * 3600), NOW).entry.dt).toBe(at(22));
+    expect(bestTimeOut(forecast([slot(22)]), NOW)).toBeNull();
   });
 });
