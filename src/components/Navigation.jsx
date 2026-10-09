@@ -44,7 +44,7 @@ export function BottomNav({ view }) {
   return (
     <nav
       aria-label="Views"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-ink-950/80 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-ink-950/97 pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <ul className="mx-auto grid max-w-md grid-cols-3">
         {ITEMS.map(({ view: id, labelKey, Icon }) => {
